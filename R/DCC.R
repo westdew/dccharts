@@ -12,19 +12,8 @@
 #' @param nburnin The number of samples to discard (i.e., samples until Bayesian convergence).
 #' @return An object of class dcc which is a list with the following components: y, x, intervention_start, p, full_samples.
 #' @export
-dcc <- function(y, x, intervention_start, model=intercept_model(), nsamples=1000, nburnin=1000) {
+dcc <- function(y, x, intervention_start, model=normal_model(), nsamples=1000, nburnin=1000) {
   if(class(model) != "dcc_model_specification")
-    stop("DCC requires a model specification")
-
-  if(model$name == "normal")
-    full_samples <- dcc_normal(y, x, intervention_start, model, nsamples, nburnin)
-  else if(model$name == "normal_growth")
-    full_samples <- dcc_normal_growth(y, x, intervention_start, model, nsamples, nburnin)
-  else if(model$name == "beta")
-    full_samples <- dcc_beta(y, x, intervention_start, model, nsamples, nburnin)
-  else if(model$name == "poisson")
-    full_samples <- dcc_poisson(y, x, intervention_start, model, nsamples, nburnin)
-  else
     stop("DCC requires a model specification")
 
   if(is.null(y) | is.null(x))
@@ -41,6 +30,20 @@ dcc <- function(y, x, intervention_start, model=intercept_model(), nsamples=1000
 
   if(intervention_start > length(y))
     stop("DCC requires at least 1 data point after the intervention start")
+
+  if(!all(x == cummin(x)))
+    stop("DCC requires x data increase monotonically")
+
+  if(model$name == "normal")
+    full_samples <- dcc_normal(y, x, intervention_start, model, nsamples, nburnin)
+  else if(model$name == "normal_growth")
+    full_samples <- dcc_normal_growth(y, x, intervention_start, model, nsamples, nburnin)
+  else if(model$name == "beta")
+    full_samples <- dcc_beta(y, x, intervention_start, model, nsamples, nburnin)
+  else if(model$name == "poisson")
+    full_samples <- dcc_poisson(y, x, intervention_start, model, nsamples, nburnin)
+  else
+    stop("DCC requires a model specification")
 
   return(
     structure(
@@ -224,8 +227,8 @@ plot.dcc <- function(dcc) {
 ### Internal Functions
 
 dcc_normal <- function(y, x, intervention_start, model, nsamples, nburnin) {
-  pre_interval = 1:(intervention_start-1)
-  post_interval = intervention_start:length(y)
+  pre_interval <- 1:(intervention_start-1)
+  post_interval <- intervention_start:length(y)
 
   parm_names <- LaplacesDemon::as.parm.names(list(alpha=0, sigma=0))
 
@@ -294,8 +297,8 @@ dcc_normal <- function(y, x, intervention_start, model, nsamples, nburnin) {
 }
 
 dcc_normal_growth <- function(y, x, intervention_start, model, nsamples, nburnin) {
-  pre_interval = 1:(intervention_start-1)
-  post_interval = intervention_start:length(y)
+  pre_interval <- 1:(intervention_start-1)
+  post_interval <- intervention_start:length(y)
 
   parm_names <- LaplacesDemon::as.parm.names(list(alpha=0, beta=0, sigma=0))
 
@@ -349,7 +352,7 @@ dcc_normal_growth <- function(y, x, intervention_start, model, nsamples, nburnin
 
   ld_initial_values <- c(
     y[1],
-    (df$y[length(df$y)]-y[1])/length(y),
+    (df$y[length(df$y)]-y[1])/(df$x[length(df$x)]-x[1]),
     sd(y)
   )
 
@@ -375,8 +378,8 @@ dcc_normal_growth <- function(y, x, intervention_start, model, nsamples, nburnin
 }
 
 dcc_beta <- function(y, x, intervention_start, model, nsamples, nburnin) {
-  pre_interval = 1:(intervention_start-1)
-  post_interval = intervention_start:length(y)
+  pre_interval <- 1:(intervention_start-1)
+  post_interval <- intervention_start:length(y)
 
   parm_names <- LaplacesDemon::as.parm.names(list(mu=0, phi=0))
 

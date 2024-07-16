@@ -7,12 +7,13 @@
 #' @param y Response data
 #' @param x Time data
 #' @param intervention_start The index in the data where the intervention began.
+#' @param covariates A matrix of covariates for the Response data (optional; only beta model)
 #' @param model A DCC model specification
 #' @param nsamples The number of counterfactual samples to simulate.
 #' @param nburnin The number of samples to discard (i.e., samples until Bayesian convergence).
 #' @return An object of class dcc which is a list with the following components: y, x, intervention_start, p, full_samples.
 #' @export
-dcc <- function(y, x, intervention_start, model=normal_model(), nsamples=1000, nburnin=1000) {
+dcc <- function(y, x, intervention_start, covariates=NULL, model=normal_model(), nsamples=1000, nburnin=1000) {
   if(class(model) != "dcc_model_specification")
     stop("DCC requires a model specification")
 
@@ -40,12 +41,22 @@ dcc <- function(y, x, intervention_start, model=normal_model(), nsamples=1000, n
   if(model$name == "poisson" & (any(y < 0) | !all.equal(y, as.integer(y))))
     stop("DCC Poisson Model requires y data is zero or a positive integer")
 
+  if(!is.null(covariates) & !is.matrix(covariates))
+    stop("DCC requires covariates are in a matrix")
+
+  if(!is.null(covariates) & nrow(covariates) != length(y))
+    stop("DCC requires the number of covariate rows match the y data length")
+
   if(model$name == "normal")
     full_samples <- dcc_normal(y, x, intervention_start, model, nsamples, nburnin)
   else if(model$name == "normal_growth")
     full_samples <- dcc_normal_growth(y, x, intervention_start, model, nsamples, nburnin)
-  else if(model$name == "beta")
-    full_samples <- dcc_beta(y, x, intervention_start, model, nsamples, nburnin)
+  else if(model$name == "beta") {
+    if(!is.null(covariates))
+      full_samples <- dcc_beta(y, x, intervention_start, model, nsamples, nburnin)
+    else
+      full_samples <- dcc_beta_control(y, x, intervention_start, covariates, model, nsamples, nburnin)
+  }
   else if(model$name == "poisson")
     full_samples <- dcc_poisson(y, x, intervention_start, model, nsamples, nburnin)
   else
@@ -384,7 +395,80 @@ dcc_normal_growth <- function(y, x, intervention_start, model, nsamples, nburnin
 }
 
 dcc_beta <- function(y, x, intervention_start, model, nsamples, nburnin) {
-  y <- dplyr::case_when(y <= 0.0001 ~ 0.0001, y >= 0.9999 ~ 0.9999, TRUE ~ y)
+  y <- dplyr::case_when(y < 0.0001 ~ 0.0001, y > 0.9999 ~ 0.9999, TRUE ~ y)
+
+  pre_interval <- 1:(intervention_start-1)
+  post_interval <- intervention_start:length(y)
+
+  parm_names <- LaplacesDemon::as.parm.names(list(mu=0, phi=0))
+
+  ld_data <- list(
+    y = y[pre_interval],
+    x = x[pre_interval],
+    mon.names = "LP",
+    parm.names = parm_names,
+    pos.mu = grep("mu", parm_names),
+    pos.phi = grep("phi", parm_names)
+  )
+
+  ld_model <- function(parm, d) {
+    mu <- LaplacesDemon::interval(parm[d$pos.mu], 0.001, 0.999)
+    parm[d$pos.mu] <- mu
+
+    phi <- LaplacesDemon::interval(parm[d$pos.phi], 0.001, Inf)
+    parm[d$pos.phi] <- phi
+
+    # log-prior
+    if(is.numeric(model$mu_prior_mu) & is.numeric(model$mu_prior_phi))
+      mu_prior <- dbeta(mu, model$mu_prior_mu*model$mu_prior_phi, (1 - model$mu_prior_mu)*model$mu_prior_phi, log=T)
+    else {
+      mu_prior <- 0
+    }
+
+    if(is.numeric(model$phi_prior_mu) & is.numeric(model$phi_prior_phi))
+      phi_prior <- dgamma(phi, shape=model$phi_prior_mu*model$phi_prior_phi, scale=1/model$phi_prior_phi, log=T)
+    else {
+      phi_prior <- 0
+    }
+
+    # log-likelihood
+    alpha <- mu*phi
+    beta <- (1 - mu)*phi
+    LL <- sum(dbeta(d$y, alpha, beta, log=T), na.rm=T)
+
+    # log-posterior
+    LP <- LL + mu_prior + phi_prior
+
+    return(list(LP=LP, Dev=-2*LL, Monitor=LP, yhat=rbeta(length(d$x), alpha, beta), parm=parm))
+  }
+
+  ld_initial_values <- c(
+    mean(y),
+    sd(y)
+  )
+
+  niter <- nburnin + nsamples
+  ld_fit <- LaplacesDemon::LaplacesDemon(
+    ld_model, Data = ld_data, Initial.Values = ld_initial_values,
+    Iterations = niter, Status = 500, Thinning = 1, LogFile = "ld_dump.log", Algorithm = "AMWG", Specs = list(B=NULL, n=0, Periodicity = 30)
+  )
+
+  ld_posterior <- as.data.frame(ld_fit$Posterior1[(nburnin+1):niter,])
+  full_samples <- data.frame(
+    y = rep(y, times=nrow(ld_posterior)),
+    x = rep(x, times=nrow(ld_posterior)),
+    z = rep(c(rep.int(0, intervention_start-1), rep.int(1, length(y) - intervention_start + 1)), times=nrow(ld_posterior)),
+    y_model_mean = rep(ld_posterior$mu, each=length(y)),
+    y_model_concentration = rep(ld_posterior$phi, each=length(y)),
+    y_model = rbeta(nrow(ld_posterior)*length(y), rep(ld_posterior$mu, each=length(y))*rep(ld_posterior$phi, each=length(y)), (1 - rep(ld_posterior$mu, each=length(y)))*rep(ld_posterior$phi, each=length(y))),
+    model_iter = rep(1:nrow(ld_posterior), each=length(y))
+  )
+
+  return(full_samples)
+}
+
+dcc_beta_control <- function(y, x, intervention_start, covariates, model, nsamples, nburnin) {
+  y <- dplyr::case_when(y < 0.0001 ~ 0.0001, y > 0.9999 ~ 0.9999, TRUE ~ y)
 
   pre_interval <- 1:(intervention_start-1)
   post_interval <- intervention_start:length(y)

@@ -20,7 +20,7 @@ dcc <- function(y, x, intervention_start, model=normal_model(), nsamples=1000, n
     stop("DCC requires y and x data")
 
   if(length(y) != length(x))
-    stop("DCC requires y and x are the same length")
+    stop("DCC requires y and x data are the same length")
 
   if(length(y) < 2)
     stop("DCC requires at least 2 data points")
@@ -33,6 +33,12 @@ dcc <- function(y, x, intervention_start, model=normal_model(), nsamples=1000, n
 
   if(!all(x == cummin(x)))
     stop("DCC requires x data increase monotonically")
+
+  if(model$name == "beta" & (any(y < 0) | any(y > 1)))
+    stop("DCC Beta Model requires y data is between 0 and 1")
+
+  if(model$name == "poisson" & (any(y < 0) | !all.equal(y, as.integer(y))))
+    stop("DCC Poisson Model requires y data is zero or a positive integer")
 
   if(model$name == "normal")
     full_samples <- dcc_normal(y, x, intervention_start, model, nsamples, nburnin)
@@ -378,6 +384,8 @@ dcc_normal_growth <- function(y, x, intervention_start, model, nsamples, nburnin
 }
 
 dcc_beta <- function(y, x, intervention_start, model, nsamples, nburnin) {
+  y <- dplyr::case_when(y <= 0.0001 ~ 0.0001, y >= 0.9999 ~ 0.9999, TRUE ~ y)
+
   pre_interval <- 1:(intervention_start-1)
   post_interval <- intervention_start:length(y)
 
@@ -449,8 +457,8 @@ dcc_beta <- function(y, x, intervention_start, model, nsamples, nburnin) {
 }
 
 dcc_poisson <- function(y, x, intervention_start, model, nsamples, nburnin) {
-  pre_interval = 1:(intervention_start-1)
-  post_interval = intervention_start:length(y)
+  pre_interval <- 1:(intervention_start-1)
+  post_interval <- intervention_start:length(y)
 
   parm_names <- LaplacesDemon::as.parm.names(list(lambda=0))
 

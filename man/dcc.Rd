@@ -7,28 +7,34 @@
 dcc(
   y,
   x,
-  intervention_start,
-  model = intercept_model(),
-  nsamples = 1000,
+  intervention_start = NULL,
+  ignored = NULL,
+  covariates = NULL,
+  model = normal_model(),
+  nsamples = 10000,
   nburnin = 1000
 )
 }
 \arguments{
 \item{y}{Response data}
 
-\item{x}{Time data}
+\item{x}{Subgroup/Time data}
 
-\item{intervention_start}{The index in the data where the intervention began.}
+\item{intervention_start}{Time where intervention began}
+
+\item{ignored}{Indices of subgroups/times to ignore when estimating the model}
+
+\item{covariates}{A matrix of covariates for the Response data (optional)}
 
 \item{model}{A DCC model specification}
 
-\item{nsamples}{The number of counterfactual samples to simulate.}
+\item{nsamples}{Number of posterior samples to simulate}
 
-\item{nburnin}{The number of samples to discard (i.e., samples until Bayesian convergence).}
+\item{nburnin}{Number of samples to discard (i.e., samples until Bayesian convergence)}
 }
 \value{
-An object of class dcc which is a list with the following components: y, x, intervention_start, p, full_samples.
+An object of class dcc which is a list with the following components: y, x, intervention_start, ignored, p, full_samples
 }
 \description{
-This function estimates a model from baseline data and simulates counterfactual data for future time points.
+This function estimates a Dynamic Control Chart using Bayesian statistical methods.
 }

@@ -8,20 +8,23 @@ beta_model(
   mu_prior_mean = NULL,
   mu_prior_concentration = NULL,
   phi_prior_mean = NULL,
-  phi_prior_concentration = NULL
+  phi_prior_concentration = NULL,
+  variance_prior_mean = NULL
 )
 }
 \arguments{
-\item{mu_prior_mean}{The prior mean of the beta data model.}
+\item{mu_prior_mean}{The prior mean of the beta data model}
 
-\item{mu_prior_concentration}{The confidence of the prior mean.}
+\item{mu_prior_concentration}{The confidence of the prior mean}
 
-\item{phi_prior_mean}{The prior concentration of the beta data model.}
+\item{phi_prior_mean}{The prior concentration of the beta data model}
 
-\item{phi_prior_concentration}{The confidence of the prior concentration.}
+\item{phi_prior_concentration}{The confidence of the prior concentration}
+
+\item{variance_prior_mean}{The prior variance of the beta data model (alternative to phi_prior_mean)}
 }
 \value{
-A Beta DCC model specification with specified hyperparameters.
+A Beta DCC model specification with specified hyperparameters
 }
 \description{
 This function specifies a stable beta data model for a DCC.

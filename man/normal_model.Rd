@@ -12,16 +12,16 @@ normal_model(
 )
 }
 \arguments{
-\item{alpha_prior_mean}{The prior mean of the normal data model.}
+\item{alpha_prior_mean}{The prior mean of the normal data model}
 
-\item{alpha_prior_sd}{The standard deviation as confidence of the prior mean.}
+\item{alpha_prior_sd}{The confidence of the prior mean}
 
-\item{sigma_prior_mode}{The prior standard deviation of the normal data model.}
+\item{sigma_prior_mode}{The prior standard deviation of the normal data model}
 
-\item{sigma_prior_concentration}{The confidence of the prior standard deviation.}
+\item{sigma_prior_concentration}{The confidence of the prior standard deviation}
 }
 \value{
-A Normal DCC model specification with specified hyperparameters.
+A Normal DCC model specification with specified hyperparameters
 }
 \description{
 This function specifies a stable normal data model for a DCC.

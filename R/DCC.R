@@ -1,17 +1,32 @@
 ### External Functions
 
+#' Calculate Alpha
+#'
+#' This function calculates the percentage of values that lie outside of n standard deviations in a normal distribution. This percentage, often called alpha, is used to set the false positive rate in statistical functions.
+#'
+#' * 3 standard deviations minimizes false positives (1 in 370) at the cost of more missed positives (confirmatory)
+#' * 2 standard deviations balances false positives (1 in 22) with missed positives (balanced)
+#' * 1.5 standard deviations accepts more false positives (1 in 7) to avoid missed positives (exploritory)
+#'
+#' @param N Number of standard deviations
+#' @return Alpha
+#' @export
+alpha <- function(N) {
+  return( pnorm(-N, 0, 1)*2 )
+}
+
 #' Estimate a Dynamic Control Chart
 #'
-#' This function estimates a Dynamic Control Chart using Bayesian statistical methods.
+#' This function estimates a Dynamic Control Chart (DCC) using Bayesian statistical methods. The DCC is a Phase II tool for substantiating whether a change resulted in an improved outcome.
 #'
-#' @param y Response data
-#' @param x Subgroup/Time data
-#' @param intervention_start Time where intervention began
-#' @param ignored Indices of subgroups/times to ignore when estimating the model
-#' @param covariates A matrix of covariates for the Response data (optional)
+#' @param y Outcome data
+#' @param x Time series data
+#' @param intervention_start Index when change began
+#' @param ignored Indices of data points to ignore when estimating the model
+#' @param covariates A matrix of covariates for the Outcome data (optional)
 #' @param model A DCC model specification
 #' @param nsamples Number of posterior samples to simulate
-#' @param nburnin Number of samples to discard (i.e., samples until Bayesian convergence)
+#' @param nburnin Number of posterior samples to discard (i.e., samples until Bayesian convergence)
 #' @return An object of class dcc which is a list with the following components: y, x, intervention_start, ignored, p, full_samples
 #' @export
 dcc <- function(y, x, intervention_start=NULL, ignored=NULL, covariates=NULL, model=normal_model(), nsamples=10000, nburnin=1000) {
@@ -24,8 +39,19 @@ dcc <- function(y, x, intervention_start=NULL, ignored=NULL, covariates=NULL, mo
   if(length(y) != length(x))
     stop("DCC requires y and x data are the same length")
 
-  if(length(x) < 2)
+  if(length(y) < 2)
     stop("DCC requires at least 2 data points")
+
+  if(any(is.na(x)))
+    stop("DCC requires no missing x data")
+
+  if(!is.null(intervention_start)) {
+    if(any(is.na(y[setdiff(1:(intervention_start-1), ignored)])))
+      stop("DCC requires no missing y data before the intervention start")
+  } else {
+    if(any(is.na(y)))
+      stop("DCC requires no missing y data")
+  }
 
   if(!is.null(intervention_start))
     if(intervention_start < 2)
@@ -39,11 +65,8 @@ dcc <- function(y, x, intervention_start=NULL, ignored=NULL, covariates=NULL, mo
     if(!all(x == cummax(x)))
       stop("DCC requires x data increase monotonically")
 
-  if(model$name == "beta" & (any(y < 0) | any(y > 1)))
+  if(model$name == "beta" & (any(na.omit(y) < 0) | any(na.omit(y) > 1)))
     stop("DCC Beta Model requires y data is between 0 and 1")
-
-  if(model$name == "poisson" & (any(y < 0) | !all(y == as.integer(y))))
-    stop("DCC Poisson Model requires y data is zero or a positive integer")
 
   if(!is.null(covariates))
     if(!is.matrix(covariates))
@@ -60,7 +83,7 @@ dcc <- function(y, x, intervention_start=NULL, ignored=NULL, covariates=NULL, mo
   else if(model$name == "beta")
     full_samples <- dcc_beta(y, x, intervention_start, ignored, model, nsamples, nburnin)
   else
-    stop("DCC requires a model specification")
+    stop("DCC requires a valid model specification")
 
   return(
     structure(
@@ -77,27 +100,31 @@ dcc <- function(y, x, intervention_start=NULL, ignored=NULL, covariates=NULL, mo
   )
 }
 
-#' Estimate a Universal Control Chart
+#' Estimate an Exchangeability Chart
 #'
-#' This function estimates a universal Control Chart using Randomization/Permutation methods.
+#' This function estimates an Exchangeability Chart (E-Chart) using randomization/permutation methods. The E-Chart is a Phase I tool for examining the exchangeability of outcomes across subgroups.
 #'
-#' @param y Response data
+#' @param y Outcome data
 #' @param x Subgroup data
-#' @param stat_fn Statistical function for aggregating the response data by subgroup
-#' @param intervention_start Time where intervention began {NOT IMPLEMENTED YET}
-#' @param ignored Indices of subgroups/times to ignore when estimating the model {NOT IMPLEMENTED YET}
+#' @param stat_fn Statistical function for aggregating the outcome data by subgroup
 #' @param nsamples Number of randomization/permutation samples to simulate
-#' @return An object of class ucc which is a list with the following components: y, x, stat_fn, intervention_start, ignored, full_samples
+#' @return An object of class echart which is a list with the following components: y, x, stat_fn, full_samples
 #' @export
-ucc <- function(y, x, stat_fn, intervention_start=NULL, ignored=NULL, nsamples=10000) {
+echart <- function(y, x, stat_fn, nsamples=10000) {
   if(is.null(y) | is.null(x))
-    stop("DCC requires y and x data")
+    stop("E-Chart requires y and x data")
 
   if(length(y) != length(x))
-    stop("DCC requires y and x data are the same length")
+    stop("E-Chart requires y and x data are the same length")
+
+    if(any(is.na(x)))
+    stop("E-Chart requires no missing x data")
+
+  if(any(is.na(y)))
+    stop("E-Chart requires no missing y data")
 
   if(length(unique(x)) < 2)
-    stop("DCC requires at least 2 subgroups")
+    stop("E-Chart requires at least 2 subgroups in x data")
 
   full_samples <- data.frame(
     x=rep(x, times=nsamples),
@@ -112,24 +139,29 @@ ucc <- function(y, x, stat_fn, intervention_start=NULL, ignored=NULL, nsamples=1
         y = y,
         x = x,
         stat_fn = stat_fn,
-        intervention_start = intervention_start,
-        ignored = ignored,
         full_samples = full_samples
       ),
-      class = "ucc"
+      class = "echart"
     )
   )
+}
+
+#' Depreciated function. Use echart function instead.
+#'
+#' @export
+ucc <- function(y, x, stat_fn, nsamples=10000) {
+  stop("Depreciated function. Use echart function instead.")
 }
 
 #' Normal DCC Model Specification
 #'
 #' This function specifies a stable normal data model for a DCC.
 #'
-#' @param alpha_prior_mean The prior mean of the normal data model.
-#' @param alpha_prior_sd The standard deviation as confidence of the prior mean.
-#' @param sigma_prior_mode The prior standard deviation of the normal data model.
-#' @param sigma_prior_concentration The confidence of the prior standard deviation.
-#' @return A Normal DCC model specification with specified hyperparameters.
+#' @param alpha_prior_mean The prior mean of the normal data model
+#' @param alpha_prior_sd The confidence of the prior mean
+#' @param sigma_prior_mode The prior standard deviation of the normal data model
+#' @param sigma_prior_concentration The confidence of the prior standard deviation
+#' @return A Normal DCC model specification with specified hyperparameters
 #' @export
 normal_model <- function(alpha_prior_mean=NULL, alpha_prior_sd=NULL, sigma_prior_mode=NULL, sigma_prior_concentration=NULL) {
   return(
@@ -150,13 +182,13 @@ normal_model <- function(alpha_prior_mean=NULL, alpha_prior_sd=NULL, sigma_prior
 #'
 #' This function specifies a normal growth data model for a DCC.
 #'
-#' @param alpha_prior_mean The prior intercept of the normal growth data model.
-#' @param alpha_prior_sd The standard deviation as confidence of the prior intercept.
-#' @param beta_prior_mean The prior slope of the normal growth data model.
-#' @param beta_prior_sd The standard deviation as confidence of the prior slope.
-#' @param sigma_prior_mode The prior standard deviation of the normal growth data model.
-#' @param sigma_prior_concentration The confidence of the prior standard deviation.
-#' @return A Normal Growth DCC model specification with specified hyperparameters.
+#' @param alpha_prior_mean The prior intercept of the normal growth data model
+#' @param alpha_prior_sd The confidence of the prior intercept
+#' @param beta_prior_mean The prior slope of the normal growth data model
+#' @param beta_prior_sd The confidence of the prior slope
+#' @param sigma_prior_mode The prior standard deviation of the normal growth data model
+#' @param sigma_prior_concentration The confidence of the prior standard deviation
+#' @return A Normal Growth DCC model specification with specified hyperparameters
 #' @export
 normal_growth_model <- function(alpha_prior_mean=NULL, alpha_prior_sd=NULL, beta_prior_mean=NULL, beta_prior_sd=NULL, sigma_prior_mode=NULL, sigma_prior_concentration=NULL) {
   return(
@@ -179,19 +211,29 @@ normal_growth_model <- function(alpha_prior_mean=NULL, alpha_prior_sd=NULL, beta
 #'
 #' This function specifies a stable beta data model for a DCC.
 #'
-#' @param mu_prior_mean The prior mean of the beta data model.
-#' @param mu_prior_concentration The confidence of the prior mean.
-#' @param phi_prior_mean The prior concentration of the beta data model.
-#' @param phi_prior_concentration The confidence of the prior concentration.
-#' @return A Beta DCC model specification with specified hyperparameters.
+#' @param mu_prior_mean The prior mean of the beta data model
+#' @param mu_prior_concentration The confidence of the prior mean
+#' @param phi_prior_mean The prior concentration of the beta data model
+#' @param phi_prior_concentration The confidence of the prior concentration
+#' @param variance_prior_mean The prior variance of the beta data model (alternative to phi_prior_mean)
+#' @return A Beta DCC model specification with specified hyperparameters
 #' @export
-beta_model <- function(mu_prior_mean=NULL, mu_prior_concentration=NULL, phi_prior_mean=NULL, phi_prior_concentration=NULL) {
+beta_model <- function(mu_prior_mean=NULL, mu_prior_concentration=NULL, phi_prior_mean=NULL, phi_prior_concentration=NULL, variance_prior_mean=NULL) {
+  if(is.null(phi_prior_mean) & !is.null(variance_prior_mean)) {
+    phi_prior_mean_val <- ((mu_prior_mean*(1-mu_prior_mean))/variance_prior_mean)-1
+
+    if(phi_prior_mean_val < 0)
+      stop("Beta DCC Model requires phi greater than zero.")
+  } else {
+    phi_prior_mean_val <- phi_prior_mean
+  }
+
   return(
     structure(
       list(
         mu_prior_mu = mu_prior_mean,
         mu_prior_phi = mu_prior_concentration,
-        phi_prior_mu = phi_prior_mean,
+        phi_prior_mu = phi_prior_mean_val,
         phi_prior_phi = phi_prior_concentration,
         name = "beta"
       ),
@@ -202,12 +244,12 @@ beta_model <- function(mu_prior_mean=NULL, mu_prior_concentration=NULL, phi_prio
 
 #' Plot a Dynamic Control Chart
 #'
-#' This function plots a Dynamic Control Chart.
+#' This function plots a Dynamic Control Chart (DCC).
 #'
-#' @param dcc An estimated Dynamic Control Chart object.
-#' @param alpha Statistical significance (false positive rate)
+#' @param dcc An estimated DCC object
+#' @param alpha False positive rate (Default: 2 standard deviations)
 #' @export
-plot.dcc <- function(dcc, alpha=0.002699796) { # pnorm(-3, 0, 1)*2
+plot.dcc <- function(dcc, alpha=0.04550026) {
   if(!is.null(dcc$intervention_start)) {
     df <- dcc$full_samples
     df <- dplyr::group_by(df, model_iter)
@@ -272,18 +314,18 @@ plot.dcc <- function(dcc, alpha=0.002699796) { # pnorm(-3, 0, 1)*2
     df1 <- dplyr::group_by(df1, model_iter)
     df1 <- dplyr::arrange(df1, model_iter, x)
     df1 <- dplyr::mutate(df1,
-                         i = 1:dplyr::n(),
-                         ignored = as.character(as.integer(i %in% dcc$ignored))
+      i = 1:dplyr::n(),
+      ignored = as.character(as.integer(i %in% dcc$ignored))
     )
     df1 <- dplyr::ungroup(df1)
 
     df1 <- dplyr::group_by(df1, x, i, ignored)
     df1 <- dplyr::summarize(df1,
-                            y_mean = mean(y),
-                            y_model_mean = mean(y_model),
-                            y_model_ll = quantile(y_model, probs=alpha/2),
-                            y_model_ul = quantile(y_model, probs=1-alpha/2),
-                            .groups="drop"
+      y_mean = mean(y),
+      y_model_mean = mean(y_model),
+      y_model_ll = quantile(y_model, probs=alpha/2),
+      y_model_ul = quantile(y_model, probs=1-alpha/2),
+      .groups="drop"
     )
 
     p1 <- ggplot2::ggplot(df1) +
@@ -315,45 +357,48 @@ plot.dcc <- function(dcc, alpha=0.002699796) { # pnorm(-3, 0, 1)*2
   }
 }
 
-#' Plot a Universal Control Chart
+#' Plot an Exchangeability Chart
 #'
-#' This function plots a Universal Control Chart.
+#' This function plots an Exchangeability Chart (E-Chart).
 #'
-#' @param ucc An estimated Universal Control Chart object.
-#' @param alpha Statistical significance (false positive rate)
-#' @param funnel Sort the
+#' @param echart An estimated E-Chart object
+#' @param stratify_by Outcome stratification data
+#' @param alpha False positive rate (Default: 3 standard deviations)
+#' @param funnel Sort the subgroups by N size
 #' @export
-plot.ucc <- function(ucc, covariate=NULL, alpha=0.002699796, funnel=F) { # pnorm(-3, 0, 1)*2
-  if(!is.null(covariate)) {
-    df <- ucc$full_samples
-    df$covariate <- rep(covariate, times=max(ucc$full_samples$permutation_iter))
+plot.echart <- function(echart, stratify_by=NULL, funnel=F, alpha=0.002699796) {
+  if(!is.null(stratify_by)) {
+    nsamples <- max(echart$full_samples$permutation_iter)
 
-    df <- dplyr::group_by(df, permutation_iter, covariate, x)
+    df <- echart$full_samples
+    df$stratify_by <- rep(stratify_by, times=nsamples)
+
+    df <- dplyr::group_by(df, permutation_iter, stratify_by, x)
     df <- dplyr::summarize(df,
-                           n = dplyr::n(),
-                           stat = do.call(ucc$stat_fn, list(y)),
-                           stat_perm = do.call(ucc$stat_fn, list(y_perm)),
-                           .groups="drop"
+      n = dplyr::n(),
+      stat = do.call(echart$stat_fn, list(y)),
+      stat_perm = do.call(echart$stat_fn, list(y_perm)),
+      .groups="drop"
     )
 
-    df <- dplyr::group_by(df, covariate, x)
+    df <- dplyr::group_by(df, stratify_by, x)
     df <- dplyr::summarize(df,
-                           n = dplyr::first(n),
-                           stat = dplyr::first(stat),
-                           stat_ll = as.vector(quantile(stat_perm, p=alpha/2)),
-                           stat_ul = as.vector(quantile(stat_perm, p=1-alpha/2)),
-                           .groups="drop"
+      n = dplyr::first(n),
+      stat = dplyr::first(stat),
+      stat_ll = as.vector(quantile(stat_perm, p=alpha/2)),
+      stat_ul = as.vector(quantile(stat_perm, p=1-alpha/2)),
+      .groups="drop"
     )
     df <- dplyr::mutate(df, assignable_cause = stat > stat_ul | stat < stat_ll)
-    df <- dplyr::group_by(df, covariate)
-    df <- dplyr::mutate(df, i = 1:n())
 
     if(funnel) {
-      df$x_val <- df$n
+      df <- dplyr::mutate(df, x_val = n)
       x_lab <- "n"
       nudge_x_val <- min(diff(range(df$n))/100, 0.25)
     } else {
-      df$x_val <- df$i
+      df <- dplyr::group_by(df, stratify_by)
+      df <- dplyr::mutate(df, x_val = 1:dplyr::n())
+      df <- dplyr::ungroup(df)
       x_lab <- "index"
       nudge_x_val <- 0.25
     }
@@ -366,42 +411,41 @@ plot.ucc <- function(ucc, covariate=NULL, alpha=0.002699796, funnel=F) { # pnorm
       ggplot2::labs(y = "stat", x = x_lab) +
       ggplot2::theme_minimal() +
       ggplot2::guides(color = "none") +
-      ggplot2::facet_wrap(vars(covariate))
+      ggplot2::facet_wrap(vars(stratify_by))
   } else {
-    df <- ucc$full_samples
+    df <- echart$full_samples
     df <- dplyr::group_by(df, permutation_iter, x)
     df <- dplyr::summarize(df,
-                           n = dplyr::n(),
-                           stat = do.call(ucc$stat_fn, list(y)),
-                           stat_perm = do.call(ucc$stat_fn, list(y_perm)),
-                           .groups="drop"
+      n = dplyr::n(),
+      stat = do.call(echart$stat_fn, list(y)),
+      stat_perm = do.call(echart$stat_fn, list(y_perm)),
+      .groups="drop"
     )
 
     df <- dplyr::group_by(df, x)
     df <- dplyr::summarize(df,
-                           n = dplyr::first(n),
-                           stat = dplyr::first(stat),
-                           stat_ll = as.vector(quantile(stat_perm, p=alpha/2)),
-                           stat_ul = as.vector(quantile(stat_perm, p=1-alpha/2)),
-                           .groups="drop"
+      n = dplyr::first(n),
+      stat = dplyr::first(stat),
+      stat_ll = as.vector(quantile(stat_perm, p=alpha/2)),
+      stat_ul = as.vector(quantile(stat_perm, p=1-alpha/2)),
+      .groups="drop"
     )
     df <- dplyr::mutate(df, assignable_cause = stat > stat_ul | stat < stat_ll)
-    df <- dplyr::mutate(df, i = 1:n())
 
     if(funnel) {
-      x <- df$n
+      df <- dplyr::mutate(df, x_val = n)
       x_lab <- "n"
       nudge_x_val <- min(diff(range(df$n))/100, 0.25)
     } else {
-      x <- 1:length(df$x)
+      df <- dplyr::mutate(df, x_val = 1:dplyr::n())
       x_lab <- "index"
       nudge_x_val <- 0.25
     }
 
-    ggplot2::ggplot() +
-      ggplot2::geom_ribbon(ggplot2::aes(x = x, ymin = df$stat_ll, ymax = df$stat_ul), alpha=0.2) +
-      ggplot2::geom_point(ggplot2::aes(x = x, y = df$stat, color=df$assignable_cause)) +
-      ggplot2::geom_text(ggplot2::aes(x = x, y = df$stat, label=df$x, color=df$assignable_cause), size=2, nudge_x = nudge_x_val, hjust="left") +
+    ggplot2::ggplot(df) +
+      ggplot2::geom_ribbon(ggplot2::aes(x = x_val, ymin = stat_ll, ymax = stat_ul), alpha=0.2) +
+      ggplot2::geom_point(ggplot2::aes(x = x_val, y = stat, color=assignable_cause)) +
+      ggplot2::geom_text(ggplot2::aes(x = x_val, y = stat, label=x, color=assignable_cause), size=2, nudge_x = nudge_x_val, hjust="left") +
       ggplot2::scale_color_manual(values=c("black", "red")) +
       ggplot2::labs(y = "stat", x = x_lab) +
       ggplot2::theme_minimal() +
@@ -445,19 +489,19 @@ dcc_normal <- function(y, x, intervention_start, ignored, model, nsamples, nburn
     if(is.numeric(model$alpha_prior_mu) & is.numeric(model$alpha_prior_sigma))
       alpha_prior <- dnorm(alpha, model$alpha_prior_mu, model$alpha_prior_sigma, log=T)
     else {
-      alpha_prior <- dnorm(alpha, mean(y), sd(y), log=T)
+      alpha_prior <- dnorm(alpha, mean(y, na.rm=T), sd(y, na.rm=T), log=T)
     }
 
     if(is.numeric(model$sigma_prior_alpha) & is.numeric(model$sigma_prior_beta))
       sigma_prior <- LaplacesDemon::dinvgamma(sigma, model$sigma_prior_alpha, model$sigma_prior_beta, log=T)
     else {
-      sigma_prior <- LaplacesDemon::dhalfcauchy(sigma, sd(y)*1.1)
+      sigma_prior <- LaplacesDemon::dhalfcauchy(sigma, sd(y, na.rm=T)*1.1)
     }
 
     # log-likelihood
     yhat <- alpha + 0*d$x
 
-    LL <- sum(dnorm(d$y, yhat, sigma, log=T), na.rm=T)
+    LL <- sum(dnorm(d$y, yhat, sigma, log=T))
 
     # log-posterior
     LP <- LL + alpha_prior + sigma_prior
@@ -466,8 +510,8 @@ dcc_normal <- function(y, x, intervention_start, ignored, model, nsamples, nburn
   }
 
   ld_initial_values <- c(
-    mean(y),
-    sd(y)
+    mean(y[pre_interval]),
+    sd(y[pre_interval])
   )
 
   niter <- nburnin + nsamples
@@ -544,7 +588,7 @@ dcc_normal_growth <- function(y, x, intervention_start, ignored, model, nsamples
     # log-likelihood
     yhat <- alpha + beta*d$x
 
-    LL <- sum(dnorm(d$y, yhat, sigma, log=T), na.rm=T)
+    LL <- sum(dnorm(d$y, yhat, sigma, log=T))
 
     # log-posterior
     LP <- LL + alpha_prior + beta_prior + sigma_prior
@@ -553,9 +597,9 @@ dcc_normal_growth <- function(y, x, intervention_start, ignored, model, nsamples
   }
 
   ld_initial_values <- c(
-    y[1],
-    (df$y[length(df$y)]-y[1])/(df$x[length(df$x)]-x[1]),
-    sd(y)
+    y[pre_interval][1],
+    (y[pre_interval][length(y[pre_interval])]-y[pre_interval][1])/(x[pre_interval][length(x[pre_interval])]-x[pre_interval][1]),
+    sd(y[pre_interval])
   )
 
   niter <- nburnin + nsamples
@@ -627,7 +671,7 @@ dcc_beta <- function(y, x, intervention_start, ignored, model, nsamples, nburnin
     # log-likelihood
     alpha <- mu*phi
     beta <- (1 - mu)*phi
-    LL <- sum(dbeta(d$y, alpha, beta, log=T), na.rm=T)
+    LL <- sum(dbeta(d$y, alpha, beta, log=T))
 
     # log-posterior
     LP <- LL + mu_prior + phi_prior
@@ -636,8 +680,8 @@ dcc_beta <- function(y, x, intervention_start, ignored, model, nsamples, nburnin
   }
 
   ld_initial_values <- c(
-    mean(y),
-    sd(y)
+    mean(y[pre_interval]),
+    sd(y[pre_interval])
   )
 
   niter <- nburnin + nsamples
@@ -748,7 +792,7 @@ dcc_beta_control <- function(y, x, intervention_start, ignored, covariates, mode
     # log-likelihood
     alpha <- mu*phi
     beta <- (1 - mu)*phi
-    LL <- sum(dbeta(d$y, alpha, beta, log=T), na.rm=T)
+    LL <- sum(dbeta(d$y, alpha, beta, log=T))
 
     # log-posterior
     LP <- LL + mu_prior + phi_prior
@@ -757,8 +801,8 @@ dcc_beta_control <- function(y, x, intervention_start, ignored, covariates, mode
   }
 
   ld_initial_values <- c(
-    mean(y),
-    sd(y)
+    mean(y[pre_interval]),
+    sd(y[pre_interval])
   )
 
   niter <- nburnin + nsamples
@@ -792,6 +836,11 @@ calculate_p_value <- function(y, intervention_start, ignored, full_samples) {
   if(!is.null(ignored)) {
     pre_interval <- setdiff(pre_interval, ignored)
   }
+
+  post_interval <- setdiff(post_interval, which(is.na(y)))
+
+  if(length(post_interval) == 0)
+    return(NA)
 
   y_sum <- sum(y[post_interval])
 

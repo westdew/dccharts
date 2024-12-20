@@ -1,9 +1,9 @@
 Package: dccharts
 Title: Dynamic Control Chart
-Version: 0.0.5
+Version: 0.1.0
 Authors@R: 
     person("Nathaniel", "Dewey", email = "nat@improvinged.org", role = c("aut", "cre"))
-Description: Plots a Dynamic Control Chart for time-series data.
+Description: A package for constructing Dynamic Control Charts and Exchangeability Charts.
 License: MIT
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)

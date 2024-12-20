@@ -2,26 +2,10 @@
 % Please edit documentation in R/DCC.R
 \name{ucc}
 \alias{ucc}
-\title{Estimate a Universal Control Chart}
+\title{Depreciated function. Use echart function instead.}
 \usage{
-ucc(y, x, stat_fn, intervention_start = NULL, ignored = NULL, nsamples = 25000)
-}
-\arguments{
-\item{y}{Response data}
-
-\item{x}{Subgroup data}
-
-\item{stat_fn}{Statistical function for aggregating the response data by subgroup}
-
-\item{intervention_start}{Time where intervention began {NOT IMPLEMENTED YET}}
-
-\item{ignored}{Indices of subgroups/times to ignore when estimating the model {NOT IMPLEMENTED YET}}
-
-\item{nsamples}{Number of randomization/permutation samples to simulate}
-}
-\value{
-An object of class ucc which is a list with the following components: y, x, stat_fn, intervention_start, ignored, full_samples
+ucc(y, x, stat_fn, nsamples = 10000)
 }
 \description{
-This function estimates a universal Control Chart using Randomization/Permutation methods.
+Depreciated function. Use echart function instead.
 }

@@ -16,25 +16,25 @@ dcc(
 )
 }
 \arguments{
-\item{y}{Response data}
+\item{y}{Outcome data}
 
-\item{x}{Subgroup/Time data}
+\item{x}{Time series data}
 
-\item{intervention_start}{Time where intervention began}
+\item{intervention_start}{Index when change began}
 
-\item{ignored}{Indices of subgroups/times to ignore when estimating the model}
+\item{ignored}{Indices of data points to ignore when estimating the model}
 
-\item{covariates}{A matrix of covariates for the Response data (optional)}
+\item{covariates}{A matrix of covariates for the Outcome data (optional)}
 
 \item{model}{A DCC model specification}
 
 \item{nsamples}{Number of posterior samples to simulate}
 
-\item{nburnin}{Number of samples to discard (i.e., samples until Bayesian convergence)}
+\item{nburnin}{Number of posterior samples to discard (i.e., samples until Bayesian convergence)}
 }
 \value{
 An object of class dcc which is a list with the following components: y, x, intervention_start, ignored, p, full_samples
 }
 \description{
-This function estimates a Dynamic Control Chart using Bayesian statistical methods.
+This function estimates a Dynamic Control Chart (DCC) using Bayesian statistical methods. The DCC is a Phase II tool for substantiating whether a change resulted in an improved outcome.
 }

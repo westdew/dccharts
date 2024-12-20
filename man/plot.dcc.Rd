@@ -4,13 +4,13 @@
 \alias{plot.dcc}
 \title{Plot a Dynamic Control Chart}
 \usage{
-\method{plot}{dcc}(dcc, alpha = 0.002699796)
+\method{plot}{dcc}(dcc, alpha = 0.04550026)
 }
 \arguments{
-\item{dcc}{An estimated Dynamic Control Chart object.}
+\item{dcc}{An estimated DCC object}
 
-\item{alpha}{Statistical significance (false positive rate)}
+\item{alpha}{False positive rate (Default: 2 standard deviations)}
 }
 \description{
-This function plots a Dynamic Control Chart.
+This function plots a Dynamic Control Chart (DCC).
 }

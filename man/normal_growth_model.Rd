@@ -14,20 +14,20 @@ normal_growth_model(
 )
 }
 \arguments{
-\item{alpha_prior_mean}{The prior intercept of the normal growth data model.}
+\item{alpha_prior_mean}{The prior intercept of the normal growth data model}
 
-\item{alpha_prior_sd}{The standard deviation as confidence of the prior intercept.}
+\item{alpha_prior_sd}{The confidence of the prior intercept}
 
-\item{beta_prior_mean}{The prior slope of the normal growth data model.}
+\item{beta_prior_mean}{The prior slope of the normal growth data model}
 
-\item{beta_prior_sd}{The standard deviation as confidence of the prior slope.}
+\item{beta_prior_sd}{The confidence of the prior slope}
 
-\item{sigma_prior_mode}{The prior standard deviation of the normal growth data model.}
+\item{sigma_prior_mode}{The prior standard deviation of the normal growth data model}
 
-\item{sigma_prior_concentration}{The confidence of the prior standard deviation.}
+\item{sigma_prior_concentration}{The confidence of the prior standard deviation}
 }
 \value{
-A Normal Growth DCC model specification with specified hyperparameters.
+A Normal Growth DCC model specification with specified hyperparameters
 }
 \description{
 This function specifies a normal growth data model for a DCC.

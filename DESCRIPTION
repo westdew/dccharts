@@ -1,6 +1,6 @@
 Package: dccharts
 Title: Dynamic Control Chart
-Version: 0.1.0
+Version: 0.2.0
 Authors@R: 
     person("Nathaniel", "Dewey", email = "nat@improvinged.org", role = c("aut", "cre"))
 Description: A package for constructing Dynamic Control Charts and Exchangeability Charts.
@@ -8,4 +8,4 @@ License: MIT
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.3.2
-Imports: LaplacesDemon, dplyr, ggplot2, patchwork
+Imports: LaplacesDemon, dplyr, ggplot2, patchwork, pammtools

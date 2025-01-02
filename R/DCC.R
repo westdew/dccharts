@@ -6,7 +6,7 @@
 #'
 #' * 3 standard deviations minimizes false positives (1 in 370) at the cost of more missed positives (confirmatory)
 #' * 2 standard deviations balances false positives (1 in 22) with missed positives (balanced)
-#' * 1.5 standard deviations accepts more false positives (1 in 7) to avoid missed positives (exploritory)
+#' * 1.5 standard deviations accepts more false positives (1 in 7) to avoid missed positives (exploratory)
 #'
 #' @param N Number of standard deviations
 #' @return Alpha
@@ -106,11 +106,12 @@ dcc <- function(y, x, intervention_start=NULL, ignored=NULL, covariates=NULL, mo
 #'
 #' @param y Outcome data
 #' @param x Subgroup data
+#' @param ignored Subgroups to ignore when estimating the model
 #' @param stat_fn Statistical function for aggregating the outcome data by subgroup
 #' @param nsamples Number of randomization/permutation samples to simulate
-#' @return An object of class echart which is a list with the following components: y, x, stat_fn, full_samples
+#' @return An object of class echart which is a list with the following components: y, x, stat_fn, ignored, full_samples
 #' @export
-echart <- function(y, x, stat_fn, nsamples=10000) {
+echart <- function(y, x, stat_fn, ignored=NULL, nsamples=10000) {
   if(is.null(y) | is.null(x))
     stop("E-Chart requires y and x data")
 
@@ -123,13 +124,16 @@ echart <- function(y, x, stat_fn, nsamples=10000) {
   if(any(is.na(y)))
     stop("E-Chart requires no missing y data")
 
+  if(any(!is.numeric(y)))
+    stop("E-Chart requires numeric y data")
+
   if(length(unique(x)) < 2)
     stop("E-Chart requires at least 2 subgroups in x data")
 
   full_samples <- data.frame(
     x=rep(x, times=nsamples),
     y=rep(y, times=nsamples),
-    y_perm=sample(y, length(x)*nsamples, replace=T),
+    y_perm=sample(y[which(!(x %in% ignored))], length(x)*nsamples, replace=T),
     permutation_iter=rep(1:nsamples, each=length(x))
   )
 
@@ -139,6 +143,7 @@ echart <- function(y, x, stat_fn, nsamples=10000) {
         y = y,
         x = x,
         stat_fn = stat_fn,
+        ignored = ignored,
         full_samples = full_samples
       ),
       class = "echart"
@@ -160,7 +165,7 @@ ucc <- function(y, x, stat_fn, nsamples=10000) {
 #' @param alpha_prior_mean The prior mean of the normal data model
 #' @param alpha_prior_sd The confidence of the prior mean
 #' @param sigma_prior_mode The prior standard deviation of the normal data model
-#' @param sigma_prior_concentration The confidence of the prior standard deviation
+#' @param sigma_prior_concentration The confidence of the prior standard deviation (sample size)
 #' @return A Normal DCC model specification with specified hyperparameters
 #' @export
 normal_model <- function(alpha_prior_mean=NULL, alpha_prior_sd=NULL, sigma_prior_mode=NULL, sigma_prior_concentration=NULL) {
@@ -187,7 +192,7 @@ normal_model <- function(alpha_prior_mean=NULL, alpha_prior_sd=NULL, sigma_prior
 #' @param beta_prior_mean The prior slope of the normal growth data model
 #' @param beta_prior_sd The confidence of the prior slope
 #' @param sigma_prior_mode The prior standard deviation of the normal growth data model
-#' @param sigma_prior_concentration The confidence of the prior standard deviation
+#' @param sigma_prior_concentration The confidence of the prior standard deviation (sample size)
 #' @return A Normal Growth DCC model specification with specified hyperparameters
 #' @export
 normal_growth_model <- function(alpha_prior_mean=NULL, alpha_prior_sd=NULL, beta_prior_mean=NULL, beta_prior_sd=NULL, sigma_prior_mode=NULL, sigma_prior_concentration=NULL) {
@@ -212,9 +217,9 @@ normal_growth_model <- function(alpha_prior_mean=NULL, alpha_prior_sd=NULL, beta
 #' This function specifies a stable beta data model for a DCC.
 #'
 #' @param mu_prior_mean The prior mean of the beta data model
-#' @param mu_prior_concentration The confidence of the prior mean
+#' @param mu_prior_concentration The confidence of the prior mean (sample size)
 #' @param phi_prior_mean The prior concentration of the beta data model
-#' @param phi_prior_concentration The confidence of the prior concentration
+#' @param phi_prior_concentration The confidence of the prior concentration (sample size)
 #' @param variance_prior_mean The prior variance of the beta data model (alternative to phi_prior_mean)
 #' @return A Beta DCC model specification with specified hyperparameters
 #' @export
@@ -359,12 +364,12 @@ plot.dcc <- function(dcc, alpha=0.04550026) {
 
 #' Plot an Exchangeability Chart
 #'
-#' This function plots an Exchangeability Chart (E-Chart).
+#' This function plots an Exchangeability Chart (E-Chart). The plot can be faceted across strata by specifying stratification data.
 #'
 #' @param echart An estimated E-Chart object
-#' @param stratify_by Outcome stratification data
+#' @param stratify_by Stratification data
 #' @param alpha False positive rate (Default: 3 standard deviations)
-#' @param funnel Sort the subgroups by N size
+#' @param funnel Sort subgroups by subgroup size (N)
 #' @export
 plot.echart <- function(echart, stratify_by=NULL, funnel=F, alpha=0.002699796) {
   if(!is.null(stratify_by)) {
@@ -389,29 +394,35 @@ plot.echart <- function(echart, stratify_by=NULL, funnel=F, alpha=0.002699796) {
       stat_ul = as.vector(quantile(stat_perm, p=1-alpha/2)),
       .groups="drop"
     )
-    df <- dplyr::mutate(df, assignable_cause = stat > stat_ul | stat < stat_ll)
+    df <- dplyr::mutate(df,
+      assignable_cause = stat > stat_ul | stat < stat_ll,
+      ignored = as.character(as.integer(x %in% echart$ignored))
+    )
 
     if(funnel) {
       df <- dplyr::mutate(df, x_val = n)
-      x_lab <- "n"
-      nudge_x_val <- min(diff(range(df$n))/100, 0.25)
     } else {
       df <- dplyr::group_by(df, stratify_by)
       df <- dplyr::mutate(df, x_val = 1:dplyr::n())
       df <- dplyr::ungroup(df)
-      x_lab <- "index"
-      nudge_x_val <- 0.25
     }
 
     ggplot2::ggplot(df) +
-      ggplot2::geom_ribbon(ggplot2::aes(x = x_val, ymin = stat_ll, ymax = stat_ul), alpha=0.2) +
-      ggplot2::geom_point(ggplot2::aes(x = x_val, y = stat, color=assignable_cause)) +
-      ggplot2::geom_text(ggplot2::aes(x = x_val, y = stat, label=x, color=assignable_cause), size=2, nudge_x = nudge_x_val, hjust="left") +
+      (if(funnel) {
+        ggplot2::geom_ribbon(ggplot2::aes(x = x_val, ymin = stat_ll, ymax = stat_ul), data=function(df) { return( rbind( df, dplyr::mutate(dplyr::summarize(dplyr::group_by(dplyr::arrange(df, x_val), stratify_by), dplyr::across(dplyr::everything(), dplyr::first), .groups = "drop"), x_val = x_val - 0.5), dplyr::mutate(dplyr::summarize(dplyr::group_by(dplyr::arrange(df, x_val), stratify_by), dplyr::across(dplyr::everything(), dplyr::last), .groups = "drop"), x_val = x_val + 0.5) ) ) }, alpha=0.2)
+      } else {
+        pammtools::geom_stepribbon(ggplot2::aes(x = x_val, ymin = stat_ll, ymax = stat_ul), data=function(df) { return( dplyr::mutate(rbind( df, dplyr::mutate(dplyr::summarize(dplyr::group_by(dplyr::arrange(df, x_val), stratify_by), dplyr::across(dplyr::everything(), dplyr::last), .groups = "drop"), x_val = x_val + 1) ), x_val = x_val - 0.5) ) }, alpha=0.2)
+      }) +
+      ggplot2::geom_point(ggplot2::aes(x = x_val, y = stat, color=assignable_cause, shape=ignored)) +
+      ggplot2::geom_text(ggplot2::aes(x = x_val, y = stat, label=x, color=assignable_cause), size=2, nudge_x = (diff(range(df$x_val))+1)*0.015*length(unique(df$stratify_by)), hjust="left") +
       ggplot2::scale_color_manual(values=c("black", "red")) +
-      ggplot2::labs(y = "stat", x = x_lab) +
+      ggplot2::scale_shape_manual(values=c(19, 1)) +
+      ggplot2:::scale_x_continuous(breaks=seq(min(df$x_val), max(df$x_val), by=ceiling(diff(range(df$x_val))/8))) +
+      ggplot2::labs(y = "stat", x = (if(funnel) { "N" } else { "index" })) +
       ggplot2::theme_minimal() +
-      ggplot2::guides(color = "none") +
-      ggplot2::facet_wrap(vars(stratify_by))
+      ggplot2::theme(axis.ticks.x = ggplot2::element_line(), panel.grid.minor.x = ggplot2::element_blank(), panel.grid.major.x = ggplot2::element_blank()) +
+      ggplot2::guides(shape="none", color = "none") +
+      ggplot2::facet_grid(cols=ggplot2::vars(stratify_by))
   } else {
     df <- echart$full_samples
     df <- dplyr::group_by(df, permutation_iter, x)
@@ -430,26 +441,32 @@ plot.echart <- function(echart, stratify_by=NULL, funnel=F, alpha=0.002699796) {
       stat_ul = as.vector(quantile(stat_perm, p=1-alpha/2)),
       .groups="drop"
     )
-    df <- dplyr::mutate(df, assignable_cause = stat > stat_ul | stat < stat_ll)
+    df <- dplyr::mutate(df,
+      assignable_cause = stat > stat_ul | stat < stat_ll,
+      ignored = as.character(as.integer(x %in% echart$ignored))
+    )
 
     if(funnel) {
       df <- dplyr::mutate(df, x_val = n)
-      x_lab <- "n"
-      nudge_x_val <- min(diff(range(df$n))/100, 0.25)
     } else {
       df <- dplyr::mutate(df, x_val = 1:dplyr::n())
-      x_lab <- "index"
-      nudge_x_val <- 0.25
     }
 
     ggplot2::ggplot(df) +
-      ggplot2::geom_ribbon(ggplot2::aes(x = x_val, ymin = stat_ll, ymax = stat_ul), alpha=0.2) +
-      ggplot2::geom_point(ggplot2::aes(x = x_val, y = stat, color=assignable_cause)) +
-      ggplot2::geom_text(ggplot2::aes(x = x_val, y = stat, label=x, color=assignable_cause), size=2, nudge_x = nudge_x_val, hjust="left") +
+      (if(funnel) {
+        ggplot2::geom_ribbon(ggplot2::aes(x = x_val, ymin = stat_ll, ymax = stat_ul), data=function(df) { return( rbind( df, dplyr::mutate(dplyr::first(dplyr::arrange(df, x_val)), x_val = x_val - 0.5), dplyr::mutate(dplyr::last(dplyr::arrange(df, x_val)), x_val = x_val + 0.5) ) ) }, alpha=0.2)
+      } else {
+        pammtools::geom_stepribbon(ggplot2::aes(x = x_val, ymin = stat_ll, ymax = stat_ul), data=function(df) { return( dplyr::mutate(rbind( df, dplyr::mutate(dplyr::last(dplyr::arrange(df, x_val)), x_val = x_val + 1) ), x_val = x_val - 0.5) ) }, alpha=0.2)
+      }) +
+      ggplot2::geom_point(ggplot2::aes(x = x_val, y = stat, color=assignable_cause, shape=ignored)) +
+      ggplot2::geom_text(ggplot2::aes(x = x_val, y = stat, label=x, color=assignable_cause), size=2, nudge_x = (diff(range(df$x_val))+1)*0.015, hjust="left") +
       ggplot2::scale_color_manual(values=c("black", "red")) +
-      ggplot2::labs(y = "stat", x = x_lab) +
+      ggplot2::scale_shape_manual(values=c(19, 1)) +
+      ggplot2:::scale_x_continuous(breaks=seq(min(df$x_val), max(df$x_val), by=ceiling(diff(range(df$x_val))/8))) +
+      ggplot2::labs(y = "stat", x = (if(funnel) { "N" } else { "index" })) +
       ggplot2::theme_minimal() +
-      ggplot2::guides(color = "none")
+      ggplot2::theme(axis.ticks.x = ggplot2::element_line(), panel.grid.minor.x = ggplot2::element_blank(), panel.grid.major.x = ggplot2::element_blank()) +
+      ggplot2::guides(shape="none", color = "none")
   }
 }
 

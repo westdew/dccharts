@@ -15,11 +15,11 @@ beta_model(
 \arguments{
 \item{mu_prior_mean}{The prior mean of the beta data model}
 
-\item{mu_prior_concentration}{The confidence of the prior mean}
+\item{mu_prior_concentration}{The confidence of the prior mean (sample size)}
 
 \item{phi_prior_mean}{The prior concentration of the beta data model}
 
-\item{phi_prior_concentration}{The confidence of the prior concentration}
+\item{phi_prior_concentration}{The confidence of the prior concentration (sample size)}
 
 \item{variance_prior_mean}{The prior variance of the beta data model (alternative to phi_prior_mean)}
 }

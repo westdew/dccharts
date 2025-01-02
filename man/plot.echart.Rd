@@ -9,12 +9,12 @@
 \arguments{
 \item{echart}{An estimated E-Chart object}
 
-\item{stratify_by}{Outcome stratification data}
+\item{stratify_by}{Stratification data}
 
 \item{funnel}{Sort the subgroups by N size}
 
 \item{alpha}{False positive rate (Default: 3 standard deviations)}
 }
 \description{
-This function plots an Exchangeability Chart (E-Chart).
+This function plots an Exchangeability Chart (E-Chart). The plot can be faceted across strata by specifying stratification data.
 }

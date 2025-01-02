@@ -4,7 +4,7 @@
 \alias{echart}
 \title{Estimate an Exchangeability Chart}
 \usage{
-echart(y, x, stat_fn, nsamples = 10000)
+echart(y, x, stat_fn, ignored = NULL, nsamples = 10000)
 }
 \arguments{
 \item{y}{Outcome data}
@@ -13,10 +13,12 @@ echart(y, x, stat_fn, nsamples = 10000)
 
 \item{stat_fn}{Statistical function for aggregating the outcome data by subgroup}
 
+\item{ignored}{Subgroups to ignore when estimating the model}
+
 \item{nsamples}{Number of randomization/permutation samples to simulate}
 }
 \value{
-An object of class echart which is a list with the following components: y, x, stat_fn, full_samples
+An object of class echart which is a list with the following components: y, x, stat_fn, ignored, full_samples
 }
 \description{
 This function estimates an Exchangeability Chart (E-Chart) using randomization/permutation methods. The E-Chart is a Phase I tool for examining the exchangeability of outcomes across subgroups.

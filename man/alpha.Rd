@@ -19,6 +19,6 @@ This function calculates the percentage of values that lie outside of n standard
 \itemize{
 \item 3 standard deviations minimizes false positives (1 in 370) at the cost of more missed positives (confirmatory)
 \item 2 standard deviations balances false positives (1 in 22) with missed positives (balanced)
-\item 1.5 standard deviations accepts more false positives (1 in 7) to avoid missed positives (exploritory)
+\item 1.5 standard deviations accepts more false positives (1 in 7) to avoid missed positives (exploratory)
 }
 }

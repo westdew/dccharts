@@ -24,7 +24,7 @@ normal_growth_model(
 
 \item{sigma_prior_mode}{The prior standard deviation of the normal growth data model}
 
-\item{sigma_prior_concentration}{The confidence of the prior standard deviation}
+\item{sigma_prior_concentration}{The confidence of the prior standard deviation (sample size)}
 }
 \value{
 A Normal Growth DCC model specification with specified hyperparameters

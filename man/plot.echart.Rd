@@ -11,7 +11,7 @@
 
 \item{stratify_by}{Stratification data}
 
-\item{funnel}{Sort the subgroups by N size}
+\item{funnel}{Sort subgroups by subgroup size (N)}
 
 \item{alpha}{False positive rate (Default: 3 standard deviations)}
 }

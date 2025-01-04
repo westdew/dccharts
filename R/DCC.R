@@ -151,6 +151,26 @@ echart <- function(y, x, stat_fn, ignored=NULL, nsamples=10000) {
   )
 }
 
+#' Estimate an Exchangeability Chart from Subgroup Percentages
+#'
+#' This function estimates an Exchangeability Chart (E-Chart) from subgroup percentages and sizes. This is a helper function which generates binary outcome data based on subgroup percentages and sizes and then passes the data to the echart function.
+#'
+#' @param y Percentage data
+#' @param x Subgroup data
+#' @param n Size data
+#' @param ignored Subgroups to ignore when estimating the model
+#' @param nsamples Number of randomization/permutation samples to simulate
+#' @return An object of class echart which is a list with the following components: y, x, stat_fn, ignored, full_samples
+#' @export
+echart_from_percentages <- function(y, x, n, stat_fn=base::mean, ignored=NULL, nsamples=10000) {
+  df <- data.frame(
+    y = c( rep( 1, times = sum(round(y*n)) ), rep( 0, times = sum(round((1-y)*n)) ) ),
+    x = c( rep( x, times = round(y*n) ), rep( x, times = round((1-y)*n) ) )
+  )
+
+  return( echart(df$y, df$x, stat_fn, ignored, nsamples) )
+}
+
 #' Depreciated function. Use echart function instead.
 #'
 #' @export

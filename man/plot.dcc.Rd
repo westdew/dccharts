@@ -4,12 +4,14 @@
 \alias{plot.dcc}
 \title{Plot a Dynamic Control Chart}
 \usage{
-\method{plot}{dcc}(dcc, alpha = 0.04550026)
+\method{plot}{dcc}(dcc, alpha = 0.04550026, export_data = F)
 }
 \arguments{
 \item{dcc}{An estimated DCC object}
 
 \item{alpha}{False positive rate (Default: 2 standard deviations)}
+
+\item{export_data}{Return a data frame instead of a plot object}
 }
 \description{
 This function plots a Dynamic Control Chart (DCC).

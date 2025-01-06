@@ -4,7 +4,13 @@
 \alias{plot.echart}
 \title{Plot an Exchangeability Chart}
 \usage{
-\method{plot}{echart}(echart, stratify_by = NULL, funnel = F, alpha = 0.002699796)
+\method{plot}{echart}(
+  echart,
+  stratify_by = NULL,
+  funnel = F,
+  alpha = 0.002699796,
+  export_data = F
+)
 }
 \arguments{
 \item{echart}{An estimated E-Chart object}
@@ -14,6 +20,8 @@
 \item{funnel}{Sort subgroups by subgroup size (N)}
 
 \item{alpha}{False positive rate (Default: 3 standard deviations)}
+
+\item{export_data}{Return a data frame instead of a plot object}
 }
 \description{
 This function plots an Exchangeability Chart (E-Chart). The plot can be faceted across strata by specifying stratification data.

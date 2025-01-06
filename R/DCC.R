@@ -273,37 +273,48 @@ beta_model <- function(mu_prior_mean=NULL, mu_prior_concentration=NULL, phi_prio
 #'
 #' @param dcc An estimated DCC object
 #' @param alpha False positive rate (Default: 2 standard deviations)
+#' @param export_data Return a data frame instead of a plot object
 #' @export
-plot.dcc <- function(dcc, alpha=0.04550026) {
+plot.dcc <- function(dcc, alpha=0.04550026, export_data=F) {
   if(!is.null(dcc$intervention_start)) {
-    df <- dcc$full_samples
-    df <- dplyr::group_by(df, model_iter)
-    df <- dplyr::arrange(df, model_iter, x)
-    df <- dplyr::mutate(df,
-      i = 1:dplyr::n(),
-      ignored = as.character(as.integer(i %in% dcc$ignored)),
-      y_cum = cumsum(ifelse(i >= dcc$intervention_start, y, 0)),
-      y_model_cum = cumsum(ifelse(i >= dcc$intervention_start, y_model, 0))
-    )
-    df <- dplyr::ungroup(df)
-    df <- dplyr::mutate(df,
-      y_effect = y - y_model,
-      y_effect_cum = y_cum - y_model_cum
-    )
-    df <- dplyr::group_by(df, x, i, ignored)
-    df <- dplyr::summarize(df,
-      y_mean = mean(y),
-      y_model_mean = mean(y_model),
-      y_model_ll = quantile(y_model, probs=alpha/2),
-      y_model_ul = quantile(y_model, probs=1-alpha/2),
-      y_effect_mean = mean(y_effect, na.rm=T),
-      y_effect_ll = quantile(y_effect, probs=alpha/2, na.rm=T),
-      y_effect_ul = quantile(y_effect, probs=1-alpha/2, na.rm=T),
-      y_effect_cum_mean = mean(y_effect_cum, na.rm=T),
-      y_effect_cum_ll = quantile(y_effect_cum, probs=alpha/2, na.rm=T),
-      y_effect_cum_ul = quantile(y_effect_cum, probs=1-alpha/2, na.rm=T),
-      .groups="drop"
-    )
+    cache_key <- rlang::hash(list(dcc$full_samples, dcc$ignored, dcc$intervention_start, alpha))
+
+    df <- cache_get(cache_key)
+    if(is.null(df)) {
+      df <- dcc$full_samples
+      df <- dplyr::group_by(df, model_iter)
+      df <- dplyr::arrange(df, model_iter, x)
+      df <- dplyr::mutate(df,
+        i = 1:dplyr::n(),
+        ignored = as.character(as.integer(i %in% dcc$ignored)),
+        y_cum = cumsum(ifelse(i >= dcc$intervention_start, y, 0)),
+        y_model_cum = cumsum(ifelse(i >= dcc$intervention_start, y_model, 0))
+      )
+      df <- dplyr::ungroup(df)
+      df <- dplyr::mutate(df,
+        y_effect = y - y_model,
+        y_effect_cum = y_cum - y_model_cum
+      )
+      df <- dplyr::group_by(df, x, i, ignored)
+      df <- dplyr::summarize(df,
+        y_mean = mean(y),
+        y_model_mean = mean(y_model),
+        y_model_ll = quantile(y_model, probs=alpha/2),
+        y_model_ul = quantile(y_model, probs=1-alpha/2),
+        y_effect_mean = mean(y_effect, na.rm=T),
+        y_effect_ll = quantile(y_effect, probs=alpha/2, na.rm=T),
+        y_effect_ul = quantile(y_effect, probs=1-alpha/2, na.rm=T),
+        y_effect_cum_mean = mean(y_effect_cum, na.rm=T),
+        y_effect_cum_ll = quantile(y_effect_cum, probs=alpha/2, na.rm=T),
+        y_effect_cum_ul = quantile(y_effect_cum, probs=1-alpha/2, na.rm=T),
+        .groups="drop"
+      )
+
+      cache_set(cache_key, df)
+    }
+
+    if(export_data)
+      return(df)
 
     p1 <- ggplot2::ggplot(df) +
       ggplot2::geom_ribbon(ggplot2::aes(x = x, ymin = y_model_ll, ymax = y_model_ul), fill="black", color=NA, alpha=0.2) +
@@ -335,23 +346,33 @@ plot.dcc <- function(dcc, alpha=0.04550026) {
                     BC"
     patchwork::wrap_plots(A=p1, B=p2, C=p3, design=plot_design)
   } else {
-    df1 <- dcc$full_samples
-    df1 <- dplyr::group_by(df1, model_iter)
-    df1 <- dplyr::arrange(df1, model_iter, x)
-    df1 <- dplyr::mutate(df1,
-      i = 1:dplyr::n(),
-      ignored = as.character(as.integer(i %in% dcc$ignored))
-    )
-    df1 <- dplyr::ungroup(df1)
+    cache_key <- rlang::hash(list("df1", dcc$full_samples, dcc$ignored, dcc$intervention_start, alpha))
 
-    df1 <- dplyr::group_by(df1, x, i, ignored)
-    df1 <- dplyr::summarize(df1,
-      y_mean = mean(y),
-      y_model_mean = mean(y_model),
-      y_model_ll = quantile(y_model, probs=alpha/2),
-      y_model_ul = quantile(y_model, probs=1-alpha/2),
-      .groups="drop"
-    )
+    df1 <- cache_get(cache_key)
+    if(is.null(df1)) {
+      df1 <- dcc$full_samples
+      df1 <- dplyr::group_by(df1, model_iter)
+      df1 <- dplyr::arrange(df1, model_iter, x)
+      df1 <- dplyr::mutate(df1,
+        i = 1:dplyr::n(),
+        ignored = as.character(as.integer(i %in% dcc$ignored))
+      )
+      df1 <- dplyr::ungroup(df1)
+
+      df1 <- dplyr::group_by(df1, x, i, ignored)
+      df1 <- dplyr::summarize(df1,
+        y_mean = mean(y),
+        y_model_mean = mean(y_model),
+        y_model_ll = quantile(y_model, probs=alpha/2),
+        y_model_ul = quantile(y_model, probs=1-alpha/2),
+        .groups="drop"
+      )
+
+      cache_set(cache_key, df1)
+    }
+
+    if(export_data)
+      return(df1)
 
     p1 <- ggplot2::ggplot(df1) +
       ggplot2::geom_ribbon(ggplot2::aes(x = x, ymin = y_model_ll, ymax = y_model_ul), fill="black", color=NA, alpha=0.2) +
@@ -362,13 +383,20 @@ plot.dcc <- function(dcc, alpha=0.04550026) {
       ggplot2::theme_minimal() +
       ggplot2::guides(fill="none")
 
-    df2 <- dcc$full_samples
+    cache_key <- rlang::hash(list("df2", dcc$full_samples, dcc$ignored, dcc$intervention_start, alpha))
 
-    df2 <- dplyr::group_by(df2, model_iter)
-    df2 <- dplyr::arrange(df2, model_iter, x)
-    df2 <- dplyr::mutate(df2, i = 1:dplyr::n())
-    df2 <- dplyr::filter(df2, !(i %in% dcc$ignored))
-    df2 <- dplyr::ungroup(df2)
+    df2 <- cache_get(cache_key)
+    if(is.null(df2)) {
+      df2 <- dcc$full_samples
+
+      df2 <- dplyr::group_by(df2, model_iter)
+      df2 <- dplyr::arrange(df2, model_iter, x)
+      df2 <- dplyr::mutate(df2, i = 1:dplyr::n())
+      df2 <- dplyr::filter(df2, !(i %in% dcc$ignored))
+      df2 <- dplyr::ungroup(df2)
+
+      cache_set(cache_key, df2)
+    }
 
     p2 <- ggplot2::ggplot() +
       ggplot2::geom_density(ggplot2::aes(x = df2$y_model), linetype="dashed") +
@@ -388,36 +416,47 @@ plot.dcc <- function(dcc, alpha=0.04550026) {
 #'
 #' @param echart An estimated E-Chart object
 #' @param stratify_by Stratification data
-#' @param alpha False positive rate (Default: 3 standard deviations)
 #' @param funnel Sort subgroups by subgroup size (N)
+#' @param alpha False positive rate (Default: 3 standard deviations)
+#' @param export_data Return a data frame instead of a plot object
 #' @export
-plot.echart <- function(echart, stratify_by=NULL, funnel=F, alpha=0.002699796) {
+plot.echart <- function(echart, stratify_by=NULL, funnel=F, alpha=0.002699796, export_data=F) {
   if(!is.null(stratify_by)) {
-    nsamples <- max(echart$full_samples$permutation_iter)
+    cache_key <- rlang::hash(list(echart$full_samples, echart$stat_fn, echart$ignored, stratify_by, alpha))
 
-    df <- echart$full_samples
-    df$stratify_by <- rep(stratify_by, times=nsamples)
+    df <- cache_get(cache_key)
+    if(is.null(df)) {
+      nsamples <- max(echart$full_samples$permutation_iter)
 
-    df <- dplyr::group_by(df, permutation_iter, stratify_by, x)
-    df <- dplyr::summarize(df,
-      n = dplyr::n(),
-      stat = do.call(echart$stat_fn, list(y)),
-      stat_perm = do.call(echart$stat_fn, list(y_perm)),
-      .groups="drop"
-    )
+      df <- echart$full_samples
+      df$stratify_by <- rep(stratify_by, times=nsamples)
 
-    df <- dplyr::group_by(df, stratify_by, x)
-    df <- dplyr::summarize(df,
-      n = dplyr::first(n),
-      stat = dplyr::first(stat),
-      stat_ll = as.vector(quantile(stat_perm, p=alpha/2)),
-      stat_ul = as.vector(quantile(stat_perm, p=1-alpha/2)),
-      .groups="drop"
-    )
-    df <- dplyr::mutate(df,
-      assignable_cause = stat > stat_ul | stat < stat_ll,
-      ignored = as.character(as.integer(x %in% echart$ignored))
-    )
+      df <- dplyr::group_by(df, permutation_iter, stratify_by, x)
+      df <- dplyr::summarize(df,
+                             n = dplyr::n(),
+                             stat = do.call(echart$stat_fn, list(y)),
+                             stat_perm = do.call(echart$stat_fn, list(y_perm)),
+                             .groups="drop"
+      )
+
+      df <- dplyr::group_by(df, stratify_by, x)
+      df <- dplyr::summarize(df,
+                             n = dplyr::first(n),
+                             stat = dplyr::first(stat),
+                             stat_ll = as.vector(quantile(stat_perm, p=alpha/2)),
+                             stat_ul = as.vector(quantile(stat_perm, p=1-alpha/2)),
+                             .groups="drop"
+      )
+      df <- dplyr::mutate(df,
+                          assignable_cause = stat > stat_ul | stat < stat_ll,
+                          ignored = as.character(as.integer(x %in% echart$ignored))
+      )
+
+      cache_set(cache_key, df)
+    }
+
+    if(export_data)
+      return(df)
 
     if(funnel) {
       df <- dplyr::mutate(df, x_val = n)
@@ -444,27 +483,37 @@ plot.echart <- function(echart, stratify_by=NULL, funnel=F, alpha=0.002699796) {
       ggplot2::guides(shape="none", color = "none") +
       ggplot2::facet_grid(cols=ggplot2::vars(stratify_by))
   } else {
-    df <- echart$full_samples
-    df <- dplyr::group_by(df, permutation_iter, x)
-    df <- dplyr::summarize(df,
-      n = dplyr::n(),
-      stat = do.call(echart$stat_fn, list(y)),
-      stat_perm = do.call(echart$stat_fn, list(y_perm)),
-      .groups="drop"
-    )
+    cache_key <- rlang::hash(list(echart$full_samples, echart$stat_fn, echart$ignored, stratify_by, alpha))
 
-    df <- dplyr::group_by(df, x)
-    df <- dplyr::summarize(df,
-      n = dplyr::first(n),
-      stat = dplyr::first(stat),
-      stat_ll = as.vector(quantile(stat_perm, p=alpha/2)),
-      stat_ul = as.vector(quantile(stat_perm, p=1-alpha/2)),
-      .groups="drop"
-    )
-    df <- dplyr::mutate(df,
-      assignable_cause = stat > stat_ul | stat < stat_ll,
-      ignored = as.character(as.integer(x %in% echart$ignored))
-    )
+    df <- cache_get(cache_key)
+    if(is.null(df)) {
+      df <- echart$full_samples
+      df <- dplyr::group_by(df, permutation_iter, x)
+      df <- dplyr::summarize(df,
+        n = dplyr::n(),
+        stat = do.call(echart$stat_fn, list(y)),
+        stat_perm = do.call(echart$stat_fn, list(y_perm)),
+        .groups="drop"
+      )
+
+      df <- dplyr::group_by(df, x)
+      df <- dplyr::summarize(df,
+        n = dplyr::first(n),
+        stat = dplyr::first(stat),
+        stat_ll = as.vector(quantile(stat_perm, p=alpha/2)),
+        stat_ul = as.vector(quantile(stat_perm, p=1-alpha/2)),
+        .groups="drop"
+      )
+      df <- dplyr::mutate(df,
+        assignable_cause = stat > stat_ul | stat < stat_ll,
+        ignored = as.character(as.integer(x %in% echart$ignored))
+      )
+
+      cache_set(cache_key, df)
+    }
+
+    if(export_data)
+      return(df)
 
     if(funnel) {
       df <- dplyr::mutate(df, x_val = n)

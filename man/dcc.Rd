@@ -12,7 +12,8 @@ dcc(
   covariates = NULL,
   model = normal_model(),
   nsamples = 10000,
-  nburnin = 1000
+  nburnin = 1000,
+  param_diagnostic = F
 )
 }
 \arguments{
@@ -24,7 +25,7 @@ dcc(
 
 \item{ignored}{Indices of data points to ignore when estimating the model}
 
-\item{covariates}{A matrix of covariates for the Outcome data (optional)}
+\item{covariates}{A matrix of contemporaneous covariates for the outcome data (optional)}
 
 \item{model}{A DCC model specification}
 
@@ -33,8 +34,8 @@ dcc(
 \item{nburnin}{Number of posterior samples to discard (i.e., samples until Bayesian convergence)}
 }
 \value{
-An object of class dcc which is a list with the following components: y, x, intervention_start, ignored, p, full_samples
+An object of class dcc which is a list with the following components: y, x, intervention_start, ignored, covariates, p, full_samples
 }
 \description{
-This function estimates a Dynamic Control Chart (DCC) using Bayesian statistical methods. The DCC is a Phase II tool for substantiating whether a change resulted in an improved outcome.
+This function estimates a Dynamic Control Chart (DCC) using Bayesian statistical methods. The DCC is a tool for substantiating whether a change resulted in an improved outcome. The DCC can also be used for forecasting an outcome during goal setting.
 }

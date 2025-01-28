@@ -5,27 +5,27 @@
 \title{Beta DCC Model Specification}
 \usage{
 beta_model(
-  mu_prior_mean = NULL,
-  mu_prior_concentration = NULL,
-  phi_prior_mean = NULL,
-  phi_prior_concentration = NULL,
-  variance_prior_mean = NULL
+  mu_prior = NULL,
+  mu_prior_confidence = NULL,
+  phi_prior = NULL,
+  phi_prior_confidence = NULL,
+  variance_prior = NULL
 )
 }
 \arguments{
-\item{mu_prior_mean}{The prior mean of the beta data model}
+\item{mu_prior}{The prior mean of the beta data model}
 
-\item{mu_prior_concentration}{The confidence of the prior mean (sample size)}
+\item{mu_prior_confidence}{The confidence of the prior mean (rate: sample size)}
 
-\item{phi_prior_mean}{The prior concentration of the beta data model}
+\item{phi_prior}{The prior concentration (precision) of the beta data model}
 
-\item{phi_prior_concentration}{The confidence of the prior concentration (sample size)}
+\item{phi_prior_confidence}{The confidence of the prior concentration (rate)}
 
-\item{variance_prior_mean}{The prior variance of the beta data model (alternative to phi_prior_mean)}
+\item{variance_prior}{The prior variance of the beta data model (alternative to specifying phi prior)}
 }
 \value{
 A Beta DCC model specification with specified hyperparameters
 }
 \description{
-This function specifies a stable beta data model for a DCC.
+This function specifies a stationary beta data model for a DCC.
 }

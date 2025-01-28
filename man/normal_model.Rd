@@ -5,24 +5,24 @@
 \title{Normal DCC Model Specification}
 \usage{
 normal_model(
-  alpha_prior_mean = NULL,
-  alpha_prior_sd = NULL,
-  sigma_prior_mode = NULL,
-  sigma_prior_concentration = NULL
+  alpha_prior = NULL,
+  alpha_prior_confidence = NULL,
+  sigma_prior = NULL,
+  sigma_prior_confidence = NULL
 )
 }
 \arguments{
-\item{alpha_prior_mean}{The prior mean of the normal data model}
+\item{alpha_prior}{The prior mean of the normal data model}
 
-\item{alpha_prior_sd}{The confidence of the prior mean}
+\item{alpha_prior_confidence}{The confidence of the prior mean (scale: standard deviation)}
 
-\item{sigma_prior_mode}{The prior standard deviation of the normal data model}
+\item{sigma_prior}{The prior standard deviation of the normal data model}
 
-\item{sigma_prior_concentration}{The confidence of the prior standard deviation (sample size)}
+\item{sigma_prior_confidence}{The confidence of the prior standard deviation (rate: sample size)}
 }
 \value{
 A Normal DCC model specification with specified hyperparameters
 }
 \description{
-This function specifies a stable normal data model for a DCC.
+This function specifies a stationary normal data model for a DCC.
 }

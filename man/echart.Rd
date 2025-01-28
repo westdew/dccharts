@@ -21,5 +21,5 @@ echart(y, x, stat_fn, ignored = NULL, nsamples = 10000)
 An object of class echart which is a list with the following components: y, x, stat_fn, ignored, full_samples
 }
 \description{
-This function estimates an Exchangeability Chart (E-Chart) using randomization/permutation methods. The E-Chart is a Phase I tool for examining the exchangeability of outcomes across subgroups.
+This function estimates an Exchangeability Chart (E-Chart) using randomization/permutation methods. The E-Chart is a tool for examining the exchangeability of outcomes across subgroups.
 }

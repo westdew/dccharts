@@ -29,7 +29,7 @@ alpha <- function(N) {
 #' @param nburnin Number of posterior samples to discard (i.e., samples until Bayesian convergence)
 #' @return An object of class dcc which is a list with the following components: y, x, intervention_start, ignored, covariates, p, full_samples
 #' @export
-dcc <- function(y, x, intervention_start=NULL, ignored=NULL, covariates=NULL, model=normal_model(), nsamples=10000, nburnin=1000, param_diagnostic=F) {
+dcc <- function(y, x, intervention_start=NULL, ignored=NULL, covariates=NULL, model=normal_model(), nsamples=10000, nburnin=1000, param_diagnostic=T) {
   if(class(model) != "dcc_model_specification")
     stop("DCC requires a model specification")
 

@@ -1,6 +1,6 @@
 Package: dccharts
 Title: Dynamic Control Chart
-Version: 0.2.0
+Version: 0.5.0
 Authors@R: 
     person("Nathaniel", "Dewey", email = "nat@improvinged.org", role = c("aut", "cre"))
 Description: A package for constructing Dynamic Control Charts and Exchangeability Charts.

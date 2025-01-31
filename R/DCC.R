@@ -1,6 +1,6 @@
 ### External Functions
 
-#' Calculate Alpha
+#' Calculate Alpha Coefficient
 #'
 #' This function calculates the percentage of values that lie outside of n standard deviations in a normal distribution. This percentage, often called alpha, is used to set the false positive rate in statistical functions.
 #'
@@ -11,7 +11,7 @@
 #' @param N Number of standard deviations
 #' @return Alpha
 #' @export
-alpha <- function(N) {
+alpha_coef <- function(N) {
   return( pnorm(-N, 0, 1)*2 )
 }
 

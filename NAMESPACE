@@ -2,7 +2,7 @@
 
 S3method(plot,dcc)
 S3method(plot,echart)
-export(alpha)
+export(alpha_coef)
 export(beta_control_model)
 export(beta_forecast_model)
 export(beta_growth_model)

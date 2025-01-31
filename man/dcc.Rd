@@ -13,7 +13,7 @@ dcc(
   model = normal_model(),
   nsamples = 10000,
   nburnin = 1000,
-  param_diagnostic = F
+  param_diagnostic = T
 )
 }
 \arguments{

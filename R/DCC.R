@@ -496,9 +496,9 @@ plot.dcc <- function(dcc, alpha=0.04550026, export_data=F) {
         ggplot2::geom_point(ggplot2::aes(x = x, y = y_mean, fill = ignored), data=function(df) { return(dplyr::filter(df, !is.na(y_mean))) }, shape=21, color="#1f77b4", size=1.5) +
         ggplot2::geom_text(ggplot2::aes(x = x, y = y_mean, label = round(y_mean, 2)), data=df[dcc$intervention_start-1,], size=2.5, nudge_x = (diff(range(df[(dcc$intervention_start-1):length(df$x),]$x))+1)*0.03, hjust="left", vjust="top", color="#1f77b4") +
         ggplot2::scale_fill_manual(values=c("#1f77b4", "#ffffff")) +
-        ggplot2::geom_point(ggplot2::aes(x = x, y = y_model_ll), data=df[dcc$intervention_start,], size=1.5, color="#777") +
+        ggplot2::geom_point(ggplot2::aes(x = x, y = y_model_ll), data=df[dcc$intervention_start,], size=1.5, color="#777777") +
         ggplot2::geom_text(ggplot2::aes(x = x, y = y_model_ll, label = round(y_model_ll, 2)), data=df[dcc$intervention_start,], size=2.5, nudge_x = (diff(range(df[(dcc$intervention_start-1):length(df$x),]$x))+1)*0.03, hjust="left", vjust="top") +
-        ggplot2::geom_point(ggplot2::aes(x = x, y = y_model_ul), data=df[dcc$intervention_start,], size=1.5, color="#777") +
+        ggplot2::geom_point(ggplot2::aes(x = x, y = y_model_ul), data=df[dcc$intervention_start,], size=1.5, color="#777777") +
         ggplot2::geom_text(ggplot2::aes(x = x, y = y_model_ul, label = round(y_model_ul, 2)), data=df[dcc$intervention_start,], size=2.5, nudge_x = (diff(range(df[(dcc$intervention_start-1):length(df$x),]$x))+1)*0.03, hjust="left", vjust="bottom") +
         ggplot2::labs(x = "x", y = "y") +
         ggplot2::coord_cartesian(xlim=c( df[(dcc$intervention_start-1),]$x, df[length(df$x),]$x+(diff(range(df[(dcc$intervention_start-1):length(df$x),]$x))+1)*0.25 )) +

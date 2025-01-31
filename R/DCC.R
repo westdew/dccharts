@@ -494,6 +494,7 @@ plot.dcc <- function(dcc, alpha=0.04550026, export_data=F) {
         ggplot2::geom_vline(ggplot2::aes(xintercept = mean(df[(dcc$intervention_start-1):dcc$intervention_start,]$x)), color="black", linetype="dashed") +
         ggplot2::geom_line(ggplot2::aes(x = x, y = y_model_mean), color="black", alpha=0.6) +
         ggplot2::geom_point(ggplot2::aes(x = x, y = y_mean, fill = ignored), data=function(df) { return(dplyr::filter(df, !is.na(y_mean))) }, shape=21, color="#1f77b4", size=1.5) +
+        ggplot2::geom_text(ggplot2::aes(x = x, y = y_mean, label = round(y_mean, 2)), data=df[dcc$intervention_start-1,], size=2.5, nudge_x = (diff(range(df[(dcc$intervention_start-1):length(df$x),]$x))+1)*0.03, hjust="left", vjust="top", color="#1f77b4") +
         ggplot2::scale_fill_manual(values=c("#1f77b4", "#ffffff")) +
         ggplot2::geom_point(ggplot2::aes(x = x, y = y_model_ll), data=df[dcc$intervention_start,], size=1.5, color="#777") +
         ggplot2::geom_text(ggplot2::aes(x = x, y = y_model_ll, label = round(y_model_ll, 2)), data=df[dcc$intervention_start,], size=2.5, nudge_x = (diff(range(df[(dcc$intervention_start-1):length(df$x),]$x))+1)*0.03, hjust="left", vjust="top") +
@@ -740,7 +741,7 @@ dcc_normal <- function(y, x, intervention_start, ignored, model, nsamples, nburn
     post_interval <- intervention_start:length(y)
   } else {
     pre_interval <- 1:length(y)
-    post_interval <- 1:length(y)
+    post_interval <- c()
   }
 
   if(!is.null(ignored)) {
@@ -825,7 +826,7 @@ dcc_normal_forecast <- function(y, x, intervention_start, ignored, model, nsampl
     post_interval <- intervention_start:length(y)
   } else {
     pre_interval <- 1:length(y)
-    post_interval <- 1:length(y)
+    post_interval <- c()
   }
 
   if(!is.null(ignored)) {
@@ -924,7 +925,7 @@ dcc_normal_growth <- function(y, x, intervention_start, ignored, model, nsamples
     post_interval <- intervention_start:length(y)
   } else {
     pre_interval <- 1:length(y)
-    post_interval <- 1:length(y)
+    post_interval <- c()
   }
 
   if(!is.null(ignored)) {
@@ -1021,7 +1022,7 @@ dcc_normal_control <- function(y, x, intervention_start, ignored, covariates, mo
     post_interval <- intervention_start:length(y)
   } else {
     pre_interval <- 1:length(y)
-    post_interval <- 1:length(y)
+    post_interval <- c()
   }
 
   if(!is.null(ignored)) {
@@ -1139,7 +1140,7 @@ dcc_beta <- function(y, x, intervention_start, ignored, model, nsamples, nburnin
     post_interval <- intervention_start:length(y)
   } else {
     pre_interval <- 1:length(y)
-    post_interval <- 1:length(y)
+    post_interval <- c()
   }
 
   if(!is.null(ignored)) {
@@ -1231,7 +1232,7 @@ dcc_beta_forecast <- function(y, x, intervention_start, ignored, model, nsamples
     post_interval <- intervention_start:length(y)
   } else {
     pre_interval <- 1:length(y)
-    post_interval <- 1:length(y)
+    post_interval <- c()
   }
 
   if(!is.null(ignored)) {
@@ -1337,7 +1338,7 @@ dcc_beta_growth <- function(y, x, intervention_start, ignored, model, nsamples, 
     post_interval <- intervention_start:length(y)
   } else {
     pre_interval <- 1:length(y)
-    post_interval <- 1:length(y)
+    post_interval <- c()
   }
 
   if(!is.null(ignored)) {
@@ -1433,7 +1434,7 @@ dcc_beta_control <- function(y, x, intervention_start, ignored, covariates, mode
     post_interval <- intervention_start:length(y)
   } else {
     pre_interval <- 1:length(y)
-    post_interval <- 1:length(y)
+    post_interval <- c()
   }
 
   if(!is.null(ignored)) {
@@ -1557,7 +1558,7 @@ calculate_p_value <- function(y, intervention_start, ignored, full_samples) {
     post_interval <- intervention_start:length(y)
   } else {
     pre_interval <- 1:length(y)
-    post_interval <- 1:length(y)
+    post_interval <- c()
   }
 
   if(!is.null(ignored)) {

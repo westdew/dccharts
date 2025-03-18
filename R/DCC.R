@@ -498,6 +498,8 @@ plot.dcc <- function(dcc, alpha=0.04550026, export_data=F) {
         ggplot2::scale_fill_manual(values=c("#1f77b4", "#ffffff")) +
         ggplot2::geom_point(ggplot2::aes(x = x, y = y_model_ll), data=df[dcc$intervention_start,], size=1.5, color="#777777") +
         ggplot2::geom_text(ggplot2::aes(x = x, y = y_model_ll, label = round(y_model_ll, 2)), data=df[dcc$intervention_start,], size=2.5, nudge_x = (diff(range(df[(dcc$intervention_start-1):length(df$x),]$x))+1)*0.03, hjust="left", vjust="top") +
+        ggplot2::geom_point(ggplot2::aes(x = x, y = y_model_mean), data=df[dcc$intervention_start,], size=1.5, color="#777777") +
+        ggplot2::geom_text(ggplot2::aes(x = x, y = y_model_mean, label = round(y_model_mean, 2)), data=df[dcc$intervention_start,], size=2.5, nudge_x = (diff(range(df[(dcc$intervention_start-1):length(df$x),]$x))+1)*0.03, hjust="left", vjust="bottom") +
         ggplot2::geom_point(ggplot2::aes(x = x, y = y_model_ul), data=df[dcc$intervention_start,], size=1.5, color="#777777") +
         ggplot2::geom_text(ggplot2::aes(x = x, y = y_model_ul, label = round(y_model_ul, 2)), data=df[dcc$intervention_start,], size=2.5, nudge_x = (diff(range(df[(dcc$intervention_start-1):length(df$x),]$x))+1)*0.03, hjust="left", vjust="bottom") +
         ggplot2::labs(x = "x", y = "y") +
@@ -859,18 +861,19 @@ dcc_normal_forecast <- function(y, x, intervention_start, ignored, model, nsampl
     parm[d$pos.sigma] <- sigma
 
     # log-prior
-    nu_prior <- sum(0, dnorm(nu[-1], nu[-N], omega, log=T))
+    nu_prior <- sum(
+      0,
+      dnorm(nu[-1], nu[-N], omega, log=T)
+    )
 
-    if(is.numeric(model$omega_prior_alpha) & is.numeric(model$omega_prior_beta))
+    if(is.numeric(model$omega_prior_alpha) & is.numeric(model$omega_prior_beta)) {
       omega_prior <- LaplacesDemon::dinvgamma(omega, model$omega_prior_alpha, model$omega_prior_beta, log=T)
-    else {
+    } else {
       omega_prior <- 0
     }
 
-    if(is.numeric(model$sigma_prior_alpha) & is.numeric(model$sigma_prior_beta))
+    if(is.numeric(model$sigma_prior_alpha) & is.numeric(model$sigma_prior_beta)) {
       sigma_prior <- LaplacesDemon::dinvgamma(sigma, model$sigma_prior_alpha, model$sigma_prior_beta, log=T)
-    else if(length(y[pre_interval]) > 1) {
-      sigma_prior <- LaplacesDemon::dinvgamma(sigma, 0.1, sd(diff(y[pre_interval]))*(0.1 + 1), log=T) # rate: 0.1
     } else {
       sigma_prior <- 0
     }
@@ -888,8 +891,8 @@ dcc_normal_forecast <- function(y, x, intervention_start, ignored, model, nsampl
 
   ld_initial_values <- c(
     rep(mean(y[pre_interval]), N), # nu : mean y
-    sd(y[pre_interval]), # omega: sd y
-    sd(y[pre_interval]) # sigma: sd y
+    sd(y[pre_interval])/sqrt(2), # omega: 1/2 sd y
+    sd(y[pre_interval])/sqrt(2) # sigma: 1/2 sd y
   )
 
   niter <- nburnin + nsamples
@@ -1058,7 +1061,7 @@ dcc_normal_control <- function(y, x, intervention_start, ignored, covariates, mo
     rho <- LaplacesDemon::interval(parm[d$pos.rho], 0.0001, Inf)
     parm[d$pos.rho] <- rho
     rhos <- rep(rho, M)
-    rhos[round(gamma) == 0] <- 0.1 # precision = 10
+    rhos[round(gamma) == 0] <- sd(y[pre_interval])/M/10
 
     sigma <- LaplacesDemon::interval(parm[d$pos.sigma], 0.0001, Inf)
     parm[d$pos.sigma] <- sigma
@@ -1175,7 +1178,7 @@ dcc_beta <- function(y, x, intervention_start, ignored, model, nsamples, nburnin
     if(is.numeric(model$phi_prior_mu) & is.numeric(model$phi_prior_phi)){
       phi_prior <- dgamma(phi, shape=model$phi_prior_mu*model$phi_prior_phi, scale=1/model$phi_prior_phi, log=T)
     } else {
-      phi_prior <- 0
+      phi_prior <- LaplacesDemon::dhalfcauchy(phi, 25, log=T)
     }
 
     # log-likelihood
@@ -1265,26 +1268,26 @@ dcc_beta_forecast <- function(y, x, intervention_start, ignored, model, nsamples
     parm[d$pos.phi] <- phi
 
     # log-prior
-    nu_prior <- sum(0, dnorm(nu[-1], nu[-N], omega, log=T))
+    nu_prior <- sum(
+      0,
+      dnorm(nu[-1], nu[-N], omega, log=T)
+    )
 
     omega_prior <- 0
 
     if(is.numeric(model$phi_prior_mu) & is.numeric(model$phi_prior_phi)){
       phi_prior <- dgamma(phi, shape=model$phi_prior_mu*model$phi_prior_phi, scale=1/model$phi_prior_phi, log=T)
-    } else if(length(y[pre_interval]) > 1) {
-      phi_prior_val <- ((mean(y[pre_interval])*(1-mean(y[pre_interval])))/var(y[pre_interval]))-1
-      phi_prior <- dgamma(phi, shape=phi_prior_val*0.05, scale=1/0.05, log=T) # rate: 0.05
     } else {
-      phi_prior <- 0
+      phi_prior <- LaplacesDemon::dhalfcauchy(phi, 25, log=T)
     }
 
     # log-likelihood
-    mu <- LaplacesDemon::interval(pnorm(nu), 0.0001, 0.9999)
+    mu <- LaplacesDemon::interval(pnorm(nu), 0.0001, 0.9999, reflect=F)
 
     a <- mu*phi
     b <- (1 - mu)*phi
 
-    LL <- sum(dbeta(d$y[pre_interval], a[pre_interval], b[pre_interval], log=T), na.rm=T)
+    LL <- sum(dbeta(d$y[pre_interval], a[pre_interval], b[pre_interval], log=T))
 
     # log-posterior
     LP <- LL + nu_prior + omega_prior + phi_prior
@@ -1294,8 +1297,8 @@ dcc_beta_forecast <- function(y, x, intervention_start, ignored, model, nsamples
 
   ld_initial_values <- c(
     rep(qnorm(mean(y[pre_interval])), N), # nu: qnorm mean y
-    sd(qnorm(y[pre_interval])), # omega: sd qnorm y
-    ((mean(y[pre_interval])*(1-mean(y[pre_interval])))/var(y[pre_interval]))-1 # phi: sample size from variance y
+    sd(qnorm(y[pre_interval]))/sqrt(2), # omega: 1/2 sd qnorm y
+    ( ( mean(y[pre_interval])*(1-mean(y[pre_interval])) ) / ( var(y[pre_interval])/2 ) )-1 # phi: sample size from 1/2 variance y
   )
 
   niter <- nburnin + nsamples
@@ -1372,16 +1375,16 @@ dcc_beta_growth <- function(y, x, intervention_start, ignored, model, nsamples, 
     if(is.numeric(model$phi_prior_mu) & is.numeric(model$phi_prior_phi)){
       phi_prior <- dgamma(phi, shape=model$phi_prior_mu*model$phi_prior_phi, scale=1/model$phi_prior_phi, log=T)
     } else {
-      phi_prior <- 0
+      phi_prior <- LaplacesDemon::dhalfcauchy(phi, 25, log=T)
     }
 
     # log-likelihood
-    mu <- LaplacesDemon::interval(pnorm(alpha + beta*d$x), 0.0001, 0.9999)
+    mu <- LaplacesDemon::interval(pnorm(alpha + beta*d$x), 0.0001, 0.9999, reflect=F)
 
     a <- mu*phi
     b <- (1 - mu)*phi
 
-    LL <- sum(dbeta(d$y, a, b, log=T), na.rm=T)
+    LL <- sum(dbeta(d$y, a, b, log=T))
 
     # log-posterior
     LP <- LL + alpha_prior + beta_prior + phi_prior
@@ -1470,7 +1473,7 @@ dcc_beta_control <- function(y, x, intervention_start, ignored, covariates, mode
     rho <- LaplacesDemon::interval(parm[d$pos.rho], 0.0001, Inf)
     parm[d$pos.rho] <- rho
     rhos <- rep(rho, M)
-    rhos[round(gamma) == 0] <- 0.1 # precision = 10
+    rhos[round(gamma) == 0] <- sd(y[pre_interval])/M/10
 
     phi <- LaplacesDemon::interval(parm[d$pos.phi], 0.0001, Inf)
     parm[d$pos.phi] <- phi
@@ -1490,17 +1493,17 @@ dcc_beta_control <- function(y, x, intervention_start, ignored, covariates, mode
     if(is.numeric(model$phi_prior_mu) & is.numeric(model$phi_prior_phi)){
       phi_prior <- dgamma(phi, shape=model$phi_prior_mu*model$phi_prior_phi, scale=1/model$phi_prior_phi, log=T)
     } else {
-      phi_prior <- 0
+      phi_prior <- LaplacesDemon::dhalfcauchy(phi, 25, log=T)
     }
 
     # log-likelihood
     betas <- as.vector(tcrossprod(d$s, t(round(gamma)*beta)))
-    mu <- LaplacesDemon::interval(pnorm(alpha + betas), 0.0001, 0.9999)
+    mu <- LaplacesDemon::interval(pnorm(alpha + betas), 0.0001, 0.9999, reflect=F)
 
     a <- mu*phi
     b <- (1 - mu)*phi
 
-    LL <- sum(dbeta(d$y, a, b, log=T), na.rm=T)
+    LL <- sum(dbeta(d$y, a, b, log=T))
 
     # log-posterior
     LP <- LL + alpha_prior + beta_prior + gamma_prior + rho_prior + phi_prior

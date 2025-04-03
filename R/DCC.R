@@ -581,6 +581,7 @@ plot.dcc <- function(dcc, alpha=0.04550026, export_data=F) {
 #' This function plots the posterior distributions for the parameters for a Dynamic Control Chart (DCC).
 #'
 #' @param dcc An estimated DCC object
+#' @param bins Number of bins (Default: 30)
 #' @param traces Plot the traces instead of the posterior distributions
 #' @export
 param_plot <- function(dcc, bins=30, traces=F) {

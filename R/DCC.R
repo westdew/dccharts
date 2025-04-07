@@ -27,9 +27,10 @@ alpha_coef <- function(N) {
 #' @param model A DCC model specification
 #' @param nsamples Number of posterior samples to simulate
 #' @param nburnin Number of posterior samples to discard (i.e., samples until Bayesian convergence)
+#' @param quiet Suppress messaging from Bayesian MCMC Algorithm (i.e., LaplacesDemon)
 #' @return An object of class dcc which is a list with the following components: y, x, intervention_start, ignored, covariates, p, full_samples
 #' @export
-dcc <- function(y, x, intervention_start=NULL, ignored=NULL, covariates=NULL, model=normal_model(), nsamples=10000, nburnin=1000, param_diagnostic=T) {
+dcc <- function(y, x, intervention_start=NULL, ignored=NULL, covariates=NULL, model=normal_model(), nsamples=10000, nburnin=1000, quiet=T) {
   if(class(model) != "dcc_model_specification")
     stop("DCC requires a model specification")
 
@@ -82,22 +83,23 @@ dcc <- function(y, x, intervention_start=NULL, ignored=NULL, covariates=NULL, mo
       stop("DCC requires no missing covariate data")
   }
 
+  param_diagnostic <- T # included by default
   if(model$name == "normal")
-    full_samples <- dcc_normal(y, x, intervention_start, ignored, model, nsamples, nburnin, param_diagnostic)
+    full_samples <- dcc_normal(y, x, intervention_start, ignored, model, nsamples, nburnin, quiet, param_diagnostic)
   else if(model$name == "normal_forecast")
-    full_samples <- dcc_normal_forecast(y, x, intervention_start, ignored, model, nsamples, nburnin, param_diagnostic)
+    full_samples <- dcc_normal_forecast(y, x, intervention_start, ignored, model, nsamples, nburnin, quiet, param_diagnostic)
   else if(model$name == "normal_growth")
-    full_samples <- dcc_normal_growth(y, x, intervention_start, ignored, model, nsamples, nburnin, param_diagnostic)
+    full_samples <- dcc_normal_growth(y, x, intervention_start, ignored, model, nsamples, nburnin, quiet, param_diagnostic)
   else if(model$name == "normal_control")
-    full_samples <- dcc_normal_control(y, x, intervention_start, ignored, covariates, model, nsamples, nburnin, param_diagnostic)
+    full_samples <- dcc_normal_control(y, x, intervention_start, ignored, covariates, model, nsamples, nburnin, quiet, param_diagnostic)
   else if(model$name == "beta")
-    full_samples <- dcc_beta(y, x, intervention_start, ignored, model, nsamples, nburnin, param_diagnostic)
+    full_samples <- dcc_beta(y, x, intervention_start, ignored, model, nsamples, nburnin, quiet, param_diagnostic)
   else if(model$name == "beta_forecast")
-    full_samples <- dcc_beta_forecast(y, x, intervention_start, ignored, model, nsamples, nburnin, param_diagnostic)
+    full_samples <- dcc_beta_forecast(y, x, intervention_start, ignored, model, nsamples, nburnin, quiet, param_diagnostic)
   else if(model$name == "beta_growth")
-    full_samples <- dcc_beta_growth(y, x, intervention_start, ignored, model, nsamples, nburnin, param_diagnostic)
+    full_samples <- dcc_beta_growth(y, x, intervention_start, ignored, model, nsamples, nburnin, quiet, param_diagnostic)
   else if(model$name == "beta_control")
-    full_samples <- dcc_beta_control(y, x, intervention_start, ignored, covariates, model, nsamples, nburnin, param_diagnostic)
+    full_samples <- dcc_beta_control(y, x, intervention_start, ignored, covariates, model, nsamples, nburnin, quiet, param_diagnostic)
   else
     stop("DCC requires a valid model specification")
 
@@ -738,7 +740,7 @@ plot.echart <- function(echart, stratify_by=NULL, funnel=F, alpha=0.002699796, e
 
 ### Internal Functions
 
-dcc_normal <- function(y, x, intervention_start, ignored, model, nsamples, nburnin, param_diagnostic) {
+dcc_normal <- function(y, x, intervention_start, ignored, model, nsamples, nburnin, quiet, param_diagnostic) {
   if(!is.null(intervention_start)) {
     pre_interval <- 1:(intervention_start-1)
     post_interval <- intervention_start:length(y)
@@ -798,9 +800,10 @@ dcc_normal <- function(y, x, intervention_start, ignored, model, nsamples, nburn
   )
 
   niter <- nburnin + nsamples
+  log_file_name <- ifelse(quiet, "ld_dump.log", "")
   ld_fit <- LaplacesDemon::LaplacesDemon(
     ld_model, Data = ld_data, Initial.Values = ld_initial_values,
-    Iterations = niter, Status = 500, Thinning = 1, LogFile = "ld_dump.log", Algorithm = "AMWG", Specs = list(B=NULL, n=0, Periodicity = 30)
+    Iterations = niter, Status = niter/10, Thinning = 1, LogFile = log_file_name, Algorithm = "AMWG", Specs = list(B=NULL, n=0, Periodicity = 30)
   )
 
   ld_posterior <- as.data.frame(ld_fit$Posterior1[(nburnin+1):niter,])
@@ -823,7 +826,7 @@ dcc_normal <- function(y, x, intervention_start, ignored, model, nsamples, nburn
   return(full_samples)
 }
 
-dcc_normal_forecast <- function(y, x, intervention_start, ignored, model, nsamples, nburnin, param_diagnostic) {
+dcc_normal_forecast <- function(y, x, intervention_start, ignored, model, nsamples, nburnin, quiet, param_diagnostic) {
   if(!is.null(intervention_start)) {
     pre_interval <- 1:(intervention_start-1)
     post_interval <- intervention_start:length(y)
@@ -897,9 +900,10 @@ dcc_normal_forecast <- function(y, x, intervention_start, ignored, model, nsampl
   )
 
   niter <- nburnin + nsamples
+  log_file_name <- ifelse(quiet, "ld_dump.log", "")
   ld_fit <- LaplacesDemon::LaplacesDemon(
     ld_model, Data = ld_data, Initial.Values = ld_initial_values,
-    Iterations = niter, Status = 500, Thinning = 1, LogFile = "ld_dump.log", Algorithm = "AMWG", Specs = list(B=NULL, n=0, Periodicity = 30)
+    Iterations = niter, Status = niter/10, Thinning = 1, LogFile = log_file_name, Algorithm = "AMWG", Specs = list(B=NULL, n=0, Periodicity = 30)
   )
 
   ld_posterior <- as.data.frame(ld_fit$Posterior1[(nburnin+1):niter,])
@@ -923,7 +927,7 @@ dcc_normal_forecast <- function(y, x, intervention_start, ignored, model, nsampl
   return(full_samples)
 }
 
-dcc_normal_growth <- function(y, x, intervention_start, ignored, model, nsamples, nburnin, param_diagnostic) {
+dcc_normal_growth <- function(y, x, intervention_start, ignored, model, nsamples, nburnin, quiet, param_diagnostic) {
   if(!is.null(intervention_start)) {
     pre_interval <- 1:(intervention_start-1)
     post_interval <- intervention_start:length(y)
@@ -993,9 +997,10 @@ dcc_normal_growth <- function(y, x, intervention_start, ignored, model, nsamples
   )
 
   niter <- nburnin + nsamples
+  log_file_name <- ifelse(quiet, "ld_dump.log", "")
   ld_fit <- LaplacesDemon::LaplacesDemon(
     ld_model, Data = ld_data, Initial.Values = ld_initial_values,
-    Iterations = niter, Status = 500, Thinning = 1, LogFile = "ld_dump.log", Algorithm = "AMWG", Specs = list(B=NULL, n=0, Periodicity = 30)
+    Iterations = niter, Status = niter/10, Thinning = 1, LogFile = log_file_name, Algorithm = "AMWG", Specs = list(B=NULL, n=0, Periodicity = 30)
   )
 
   ld_posterior <- as.data.frame(ld_fit$Posterior1[(nburnin+1):niter,])
@@ -1020,7 +1025,7 @@ dcc_normal_growth <- function(y, x, intervention_start, ignored, model, nsamples
   return(full_samples)
 }
 
-dcc_normal_control <- function(y, x, intervention_start, ignored, covariates, model, nsamples, nburnin, param_diagnostic) {
+dcc_normal_control <- function(y, x, intervention_start, ignored, covariates, model, nsamples, nburnin, quiet, param_diagnostic) {
   if(!is.null(intervention_start)) {
     pre_interval <- 1:(intervention_start-1)
     post_interval <- intervention_start:length(y)
@@ -1062,7 +1067,8 @@ dcc_normal_control <- function(y, x, intervention_start, ignored, covariates, mo
     rho <- LaplacesDemon::interval(parm[d$pos.rho], 0.0001, Inf)
     parm[d$pos.rho] <- rho
     rhos <- rep(rho, M)
-    rhos[round(gamma) == 0] <- sd(y[pre_interval])/M/10
+    nmatches <- ifelse(!is.null(model$inclusion_probabilities), sum(model$inclusion_probabilities), model$nmatches)
+    rhos[round(gamma) == 0] <- sd(y[pre_interval])/nmatches/10
 
     sigma <- LaplacesDemon::interval(parm[d$pos.sigma], 0.0001, Inf)
     parm[d$pos.sigma] <- sigma
@@ -1072,9 +1078,9 @@ dcc_normal_control <- function(y, x, intervention_start, ignored, covariates, mo
     beta_prior <- sum(dnorm(beta, 0, rhos, log=T))
 
     if(!is.null(model$inclusion_probabilities)) {
-      gamma_prior <- sum(dbinom(round(gamma), 1, model$inclusion_probabilities, log=T))
+      gamma_prior <- sum(dbinom(round(gamma), 1, LaplacesDemon::interval(model$inclusion_probabilities, 0.0001, 0.9999), log=T))
     } else {
-      gamma_prior <- sum(dbinom(round(gamma), 1, model$nmatches/M, log=T))
+      gamma_prior <- sum(dbinom(round(gamma), 1, LaplacesDemon::interval(model$nmatches/M, 0.0001, 0.9999), log=T))
     }
 
     rho_prior <- 0
@@ -1106,9 +1112,10 @@ dcc_normal_control <- function(y, x, intervention_start, ignored, covariates, mo
   )
 
   niter <- nburnin + nsamples
+  log_file_name <- ifelse(quiet, "ld_dump.log", "")
   ld_fit <- LaplacesDemon::LaplacesDemon(
     ld_model, Data = ld_data, Initial.Values = ld_initial_values,
-    Iterations = niter, Status = 500, Thinning = 1, LogFile = "ld_dump.log", Algorithm = "AMWG", Specs = list(B=NULL, n=0, Periodicity = 30)
+    Iterations = niter, Status = niter/10, Thinning = 1, LogFile = log_file_name, Algorithm = "AMWG", Specs = list(B=NULL, n=0, Periodicity = 30)
   )
 
   ld_posterior <- as.data.frame(ld_fit$Posterior1[(nburnin+1):niter,])
@@ -1136,7 +1143,7 @@ dcc_normal_control <- function(y, x, intervention_start, ignored, covariates, mo
   return(full_samples)
 }
 
-dcc_beta <- function(y, x, intervention_start, ignored, model, nsamples, nburnin, param_diagnostic) {
+dcc_beta <- function(y, x, intervention_start, ignored, model, nsamples, nburnin, quiet, param_diagnostic) {
   y <- dplyr::case_when(y < 0.0001 ~ 0.0001, y > 0.9999 ~ 0.9999, TRUE ~ y)
 
   if(!is.null(intervention_start)) {
@@ -1199,9 +1206,10 @@ dcc_beta <- function(y, x, intervention_start, ignored, model, nsamples, nburnin
   )
 
   niter <- nburnin + nsamples
+  log_file_name <- ifelse(quiet, "ld_dump.log", "")
   ld_fit <- LaplacesDemon::LaplacesDemon(
     ld_model, Data = ld_data, Initial.Values = ld_initial_values,
-    Iterations = niter, Status = 500, Thinning = 1, LogFile = "ld_dump.log", Algorithm = "AMWG", Specs = list(B=NULL, n=0, Periodicity = 30)
+    Iterations = niter, Status = niter/10, Thinning = 1, LogFile = log_file_name, Algorithm = "AMWG", Specs = list(B=NULL, n=0, Periodicity = 30)
   )
 
   ld_posterior <- as.data.frame(ld_fit$Posterior1[(nburnin+1):niter,])
@@ -1228,7 +1236,7 @@ dcc_beta <- function(y, x, intervention_start, ignored, model, nsamples, nburnin
   return(full_samples)
 }
 
-dcc_beta_forecast <- function(y, x, intervention_start, ignored, model, nsamples, nburnin, param_diagnostic) {
+dcc_beta_forecast <- function(y, x, intervention_start, ignored, model, nsamples, nburnin, quiet, param_diagnostic) {
   y <- dplyr::case_when(y < 0.0001 ~ 0.0001, y > 0.9999 ~ 0.9999, TRUE ~ y)
 
   if(!is.null(intervention_start)) {
@@ -1303,9 +1311,10 @@ dcc_beta_forecast <- function(y, x, intervention_start, ignored, model, nsamples
   )
 
   niter <- nburnin + nsamples
+  log_file_name <- ifelse(quiet, "ld_dump.log", "")
   ld_fit <- LaplacesDemon::LaplacesDemon(
     ld_model, Data = ld_data, Initial.Values = ld_initial_values,
-    Iterations = niter, Status = 500, Thinning = 1, LogFile = "ld_dump.log", Algorithm = "AMWG", Specs = list(B=NULL, n=0, Periodicity = 30)
+    Iterations = niter, Status = niter/10, Thinning = 1, LogFile = log_file_name, Algorithm = "AMWG", Specs = list(B=NULL, n=0, Periodicity = 30)
   )
 
   ld_posterior <- as.data.frame(ld_fit$Posterior1[(nburnin+1):niter,])
@@ -1334,7 +1343,7 @@ dcc_beta_forecast <- function(y, x, intervention_start, ignored, model, nsamples
   return(full_samples)
 }
 
-dcc_beta_growth <- function(y, x, intervention_start, ignored, model, nsamples, nburnin, param_diagnostic) {
+dcc_beta_growth <- function(y, x, intervention_start, ignored, model, nsamples, nburnin, quiet, param_diagnostic) {
   y <- dplyr::case_when(y < 0.0001 ~ 0.0001, y > 0.9999 ~ 0.9999, TRUE ~ y)
 
   if(!is.null(intervention_start)) {
@@ -1400,9 +1409,10 @@ dcc_beta_growth <- function(y, x, intervention_start, ignored, model, nsamples, 
   )
 
   niter <- nburnin + nsamples
+  log_file_name <- ifelse(quiet, "ld_dump.log", "")
   ld_fit <- LaplacesDemon::LaplacesDemon(
     ld_model, Data = ld_data, Initial.Values = ld_initial_values,
-    Iterations = niter, Status = 500, Thinning = 1, LogFile = "ld_dump.log", Algorithm = "AMWG", Specs = list(B=NULL, n=0, Periodicity = 30)
+    Iterations = niter, Status = niter/10, Thinning = 1, LogFile = log_file_name, Algorithm = "AMWG", Specs = list(B=NULL, n=0, Periodicity = 30)
   )
 
   ld_posterior <- as.data.frame(ld_fit$Posterior1[(nburnin+1):niter,])
@@ -1430,7 +1440,7 @@ dcc_beta_growth <- function(y, x, intervention_start, ignored, model, nsamples, 
   return(full_samples)
 }
 
-dcc_beta_control <- function(y, x, intervention_start, ignored, covariates, model, nsamples, nburnin, param_diagnostic) {
+dcc_beta_control <- function(y, x, intervention_start, ignored, covariates, model, nsamples, nburnin, quiet, param_diagnostic) {
   y <- dplyr::case_when(y < 0.0001 ~ 0.0001, y > 0.9999 ~ 0.9999, TRUE ~ y)
 
   if(!is.null(intervention_start)) {
@@ -1474,7 +1484,8 @@ dcc_beta_control <- function(y, x, intervention_start, ignored, covariates, mode
     rho <- LaplacesDemon::interval(parm[d$pos.rho], 0.0001, Inf)
     parm[d$pos.rho] <- rho
     rhos <- rep(rho, M)
-    rhos[round(gamma) == 0] <- sd(y[pre_interval])/M/10
+    nmatches <- ifelse(!is.null(model$inclusion_probabilities), sum(model$inclusion_probabilities), model$nmatches)
+    rhos[round(gamma) == 0] <- sd(qnorm(y[pre_interval]))/nmatches/10
 
     phi <- LaplacesDemon::interval(parm[d$pos.phi], 0.0001, Inf)
     parm[d$pos.phi] <- phi
@@ -1484,9 +1495,9 @@ dcc_beta_control <- function(y, x, intervention_start, ignored, covariates, mode
     beta_prior <- sum(dnorm(beta, 0, rhos, log=T))
 
     if(!is.null(model$inclusion_probabilities)) {
-      gamma_prior <- sum(dbinom(round(gamma), 1, model$inclusion_probabilities, log=T))
+      gamma_prior <- sum(dbinom(round(gamma), 1, LaplacesDemon::interval(model$inclusion_probabilities, 0.0001, 0.9999), log=T))
     } else {
-      gamma_prior <- sum(dbinom(round(gamma), 1, model$nmatches/M, log=T))
+      gamma_prior <- sum(dbinom(round(gamma), 1, LaplacesDemon::interval(model$nmatches/M, 0.0001, 0.9999), log=T))
     }
 
     rho_prior <- 0
@@ -1521,9 +1532,10 @@ dcc_beta_control <- function(y, x, intervention_start, ignored, covariates, mode
   )
 
   niter <- nburnin + nsamples
+  log_file_name <- ifelse(quiet, "ld_dump.log", "")
   ld_fit <- LaplacesDemon::LaplacesDemon(
     ld_model, Data = ld_data, Initial.Values = ld_initial_values,
-    Iterations = niter, Status = 500, Thinning = 1, LogFile = "ld_dump.log", Algorithm = "AMWG", Specs = list(B=NULL, n=0, Periodicity = 30)
+    Iterations = niter, Status = niter/10, Thinning = 1, LogFile = log_file_name, Algorithm = "AMWG", Specs = list(B=NULL, n=0, Periodicity = 30)
   )
 
   ld_posterior <- as.data.frame(ld_fit$Posterior1[(nburnin+1):niter,])
